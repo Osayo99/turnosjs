@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Jefatura Command Center - ANDA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script> 
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        body { font-family: 'Outfit', sans-serif; }
+        /* Ajuste para inputs date en fondo claro */
+        input[type="date"] { cursor: pointer; }
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4">
+
+    <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-600">
+        <div>
+            <h1 class="text-xl font-black text-blue-900">ANDA <span class="text-purple-600 font-normal">Command Center</span></h1>
+            <p id="sucursalDisplay" class="text-xs font-bold text-gray-500 uppercase mt-1">Cargando...</p>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="text-right hidden sm:block">
+                <span id="userName" class="block text-sm font-bold text-blue-900">Jefe</span>
+                <button onclick="abrirModalCambioClave()" class="text-[10px] text-blue-500 hover:text-blue-700 underline">Cambiar mi contraseña</button>
+            </div>
+            <button onclick="logout()" class="text-xs text-red-500 font-bold border border-red-200 px-3 py-2 rounded hover:bg-red-50 transition-colors">SALIR</button>
+        </div>
+    </header>
+
+    <div id="viewDashboard" class="space-y-6 pb-10">
+        
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-blue-500">
+                <p class="text-xs text-gray-400 font-bold uppercase">Total Hoy</p>
+                <h2 id="statTotal" class="text-3xl font-black text-blue-900">0</h2>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-orange-400">
+                <p class="text-xs text-gray-400 font-bold uppercase">En Espera</p>
+                <h2 id="statPendientes" class="text-3xl font-black text-orange-500">0</h2>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-green-500">
+                <p class="text-xs text-gray-400 font-bold uppercase">Atendidos</p>
+                <h2 id="statAtendidos" class="text-3xl font-black text-green-600">0</h2>
+            </div>
+            <div class="bg-white p-4 rounded-xl shadow-sm border-b-4 border-purple-500">
+                <p class="text-xs text-gray-400 font-bold uppercase">Derivados</p>
+                <h2 id="statDerivados" class="text-3xl font-black text-purple-600">0</h2>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div class="lg:col-span-2 space-y-6">
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+                    <h3 class="font-bold text-blue-900 mb-4 flex items-center gap-2"><span>🖥️</span> Ventanillas (Tiempo Real)</h3>
+                    <div id="gridVentanillas" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <p class="text-sm text-gray-400 col-span-full text-center py-4">Cargando...</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-bold text-purple-900 mb-3 flex items-center gap-2"><span>📥</span> Casos Derivados</h3>
+                    <div id="listaDerivados" class="space-y-3 max-h-60 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-slate-900 text-white p-5 rounded-2xl shadow-lg">
+                    <h3 class="font-bold text-blue-300 mb-3 text-xs uppercase tracking-widest">En Pantalla</h3>
+                    <div id="listaColaMonitor" class="space-y-2 max-h-48 overflow-y-auto pr-2"></div>
+                </div>
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+                    <h3 class="font-bold text-gray-700 mb-4 text-sm">Por Tipo</h3>
+                    <div id="chartTipos" class="space-y-3"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mt-8">
+            <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-6 gap-6">
+                <div><h2 class="font-bold text-xl text-gray-800 flex items-center gap-2"><span>🔍</span> Auditoría</h2><p class="text-sm text-gray-400 mt-1">Busque tickets históricos.</p></div>
+                <div class="flex flex-col md:flex-row gap-4 bg-gray-50 p-3 rounded-xl border border-gray-200 w-full xl:w-auto">
+                    <div class="flex items-center gap-3">
+                        <div class="flex flex-col"><label class="text-[9px] text-gray-400 font-bold uppercase ml-1">Desde</label><input type="date" id="hDateStart" class="bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-blue-500"></div>
+                        <div class="flex flex-col"><label class="text-[9px] text-gray-400 font-bold uppercase ml-1">Hasta</label><input type="date" id="hDateEnd" class="bg-white border border-gray-300 rounded-lg px-2 py-1.5 text-xs text-gray-700 outline-none focus:border-blue-500"></div>
+                    </div>
+                    <div class="hidden md:block w-px bg-gray-300 mx-2"></div>
+                    <div class="flex flex-col flex-grow">
+                        <label class="text-[9px] text-gray-400 font-bold uppercase ml-1">Búsqueda</label>
+                        <div class="flex gap-2"><input type="text" id="hSearchQuery" placeholder="DUI, Nota, Código..." class="bg-white border border-gray-300 rounded-lg px-3 py-1.5 text-sm text-gray-700 w-full md:w-64 outline-none focus:border-blue-500"><button onclick="buscarHistorial()" class="bg-blue-600 hover:bg-blue-700 text-white font-bold px-6 py-1.5 rounded-lg text-xs tracking-wider transition-colors shadow-lg shadow-blue-200">BUSCAR</button></div>
+                    </div>
+                </div>
+            </div>
+            <div class="overflow-x-auto rounded-xl border border-gray-200">
+                <table class="w-full text-left text-sm text-gray-600">
+                    <thead class="bg-slate-50 text-xs uppercase font-bold text-blue-600"><tr><th class="p-4">Ticket</th><th class="p-4">Fecha</th><th class="p-4">Cliente / DUI</th><th class="p-4">Atendido Por</th><th class="p-4">Nota / Resolución</th><th class="p-4 text-right">Estado</th></tr></thead>
+                    <tbody id="tablaHistorial" class="divide-y divide-gray-100"><tr><td colspan="6" class="p-8 text-center text-gray-400 italic">Seleccione rango y busque.</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><span>📺</span> Monitor TV</h3>
+                <div class="flex flex-col gap-4">
+                    <input type="file" id="videoInput" accept="video/mp4" class="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100">
+                    <button id="btnSubirVideo" onclick="subirVideo()" class="w-full bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm shadow hover:bg-blue-700 transition-all active:scale-95">SUBIR VIDEO</button>
+                    
+                    <div id="progressContainer" class="hidden w-full bg-gray-200 rounded-full h-3 mt-1">
+                        <div id="progressBar" class="bg-green-500 h-3 rounded-full transition-all duration-200" style="width: 0%"></div>
+                    </div>
+                    <p id="progressText" class="hidden text-xs text-center text-gray-500 font-bold">0%</p>
+                </div>
+            </div>
+            <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
+                <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><span>➕</span> Nuevo Ejecutivo</h3>
+                <div class="space-y-3">
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="text" id="newEjecName" placeholder="Nombre" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                        <input type="text" id="newEjecUser" placeholder="Usuario" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <input type="password" id="newEjecPass" placeholder="Clave" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                        <input type="number" id="newEjecVent" placeholder="Ventanilla N°" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                    </div>
+                    <button onclick="crearEjecutivo()" class="w-full bg-green-600 text-white font-bold py-2 rounded-xl shadow hover:bg-green-500 active:scale-95 text-sm">CREAR</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 mt-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="font-bold text-gray-700 flex items-center gap-2"><span>👨‍💼</span> Plantilla de Personal</h3>
+                <button onclick="cargarPersonal()" class="text-xs text-blue-500 underline">Refrescar</button>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-sm text-gray-500">
+                    <thead class="bg-gray-50 text-xs uppercase font-bold text-gray-400"><tr><th class="p-3">Nombre</th><th class="p-3">Usuario</th><th class="p-3">Rol</th><th class="p-3">Ventanilla</th><th class="p-3">Skills (Prioridades)</th><th class="p-3 text-right">Gestión</th></tr></thead>
+                    <tbody id="listaPersonalBody" class="divide-y divide-gray-100"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="viewWorkspace" class="hidden h-[85vh]">
+        <div class="max-w-4xl mx-auto h-full flex flex-col bg-white rounded-3xl shadow-2xl overflow-hidden border border-purple-100">
+            <div class="bg-purple-600 p-6 text-white flex justify-between items-center">
+                <div><p class="text-xs font-bold opacity-75 uppercase">Atendiendo Derivado</p><h1 id="wkTicketCodigo" class="text-5xl font-black">--</h1><p id="wkTicketTipo" class="text-sm font-medium bg-purple-800 inline-block px-3 py-1 rounded-full mt-2">--</p></div>
+                <div class="text-right bg-purple-800/50 p-4 rounded-xl"><p class="text-[10px] uppercase font-bold opacity-75">Tiempo</p><div id="wkTimer" class="text-4xl font-mono font-bold">00:00</div></div>
+            </div>
+            <div class="flex-grow p-8 flex flex-col gap-4">
+                <div class="flex justify-between items-end"><label class="font-bold text-purple-900">Resolución</label><p id="wkDui" class="text-xs text-gray-400 font-mono">DUI: --</p></div>
+                <textarea id="wkNotas" class="flex-grow w-full p-4 bg-purple-50 border border-purple-100 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-purple-400 text-gray-700 text-lg"></textarea>
+            </div>
+            <div class="p-6 bg-gray-50 border-t border-gray-100 flex justify-between items-center"><button onclick="cancelarAtencionJefe()" class="text-gray-400 hover:text-red-500 font-bold text-xs uppercase px-4">Volver</button><button onclick="finalizarAtencionJefe()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg shadow-green-200">✅ FINALIZAR</button></div>
+        </div>
+    </div>
+
+    <div id="modalCambioClave" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-sm">
+            <h3 class="font-bold text-lg mb-4 text-gray-800">Cambiar Contraseña</h3>
+            <div class="space-y-3"><input type="password" id="ownPassOld" placeholder="Contraseña Actual" class="w-full p-2 border rounded-lg"><input type="password" id="ownPassNew" placeholder="Nueva Contraseña" class="w-full p-2 border rounded-lg"></div>
+            <div class="flex gap-2 mt-4 justify-end"><button onclick="document.getElementById('modalCambioClave').classList.add('hidden')" class="text-gray-500 text-sm font-bold px-3">Cancelar</button><button onclick="guardarMiClave()" class="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-blue-700">Guardar</button></div>
+        </div>
+    </div>
+
+    <div id="modalEditarUsuario" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-md">
+            <h3 class="font-bold text-lg mb-4 text-gray-800 border-b pb-2">✏️ Editar Ejecutivo</h3>
+            
+            <input type="hidden" id="editUserId">
+            
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Nombre</label>
+                    <input type="text" id="editUserNombre" class="w-full p-2 border rounded-lg text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Usuario</label>
+                    <input type="text" id="editUserUsername" class="w-full p-2 border rounded-lg text-sm outline-none focus:border-blue-500">
+                </div>
+            </div>
+
+            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Ventanilla N°</label>
+            <input type="number" id="editUserVent" class="w-full p-2 border rounded-lg mb-4 text-sm outline-none focus:border-blue-500">
+
+            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Configuración de Prioridades</label>
+            <p class="text-[10px] text-gray-400 mb-2">Seleccione prioridad (1 es más alta). Deje en "No atiende" para bloquear.</p>
+            
+            <div class="space-y-2 bg-gray-50 p-3 rounded-lg border border-gray-200 max-h-60 overflow-y-auto" id="skillsContainer">
+                </div>
+
+            <div class="flex gap-2 mt-6 justify-end pt-4 border-t">
+                <button onclick="document.getElementById('modalEditarUsuario').classList.add('hidden')" class="text-gray-500 text-sm font-bold px-3">Cancelar</button>
+                <button onclick="guardarEdicionUsuario()" class="bg-blue-600 text-white text-sm font-bold px-4 py-2 rounded-lg hover:bg-blue-700">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const sucursalId = localStorage.getItem('anda_sucursal_id');
+        const currentUser = JSON.parse(sessionStorage.getItem('anda_user'));
+        let socket = null, currentTicketId = null, timerInterval = null;
+        
+        // Validación de acceso
+        if(!sucursalId || !currentUser || currentUser.rol !== 'jefe_sucursal') window.location.href = '/ventanilla.html';
+        document.getElementById('userName').textContent = currentUser.nombre;
+        
+        // Inicialización
+        (async () => {
+            try {
+                const res = await fetch(`/api/sucursales/${sucursalId}`);
+                const data = await res.json();
+                document.getElementById('sucursalDisplay').textContent = data.nombre;
+                cargarDatosDashboard(); 
+                cargarPersonal(); 
+                buscarHistorial(true);
+            } catch(e) { console.error("Error init:", e); }
+        })();
+
+        // Socket.io
+        socket = io(); 
+        socket.emit('unirse_sucursal', sucursalId);
+        ['cola_actualizada', 'ticket_llamado', 'ticket_finalizado'].forEach(evt => socket.on(evt, cargarDatosDashboard));
+        
+        // Timer Global (Corre cada segundo)
+        setInterval(actualizarTimersAgentes, 1000);
+
+        // --- DASHBOARD ---
+        async function cargarDatosDashboard() {
+            if(currentTicketId) return; // No actualizar si el jefe está atendiendo
+            try {
+                const res = await fetch(`/api/tickets/jefatura/${sucursalId}`);
+                const data = await res.json();
+                
+                document.getElementById('statTotal').textContent = data.stats.total;
+                document.getElementById('statPendientes').textContent = data.stats.pendientes;
+                document.getElementById('statAtendidos').textContent = data.stats.atendidos;
+                document.getElementById('statDerivados').textContent = data.stats.derivados;
+                
+                renderChart(data.conteoPorTipo); 
+                renderVentanillas(data.estadoVentanillas); 
+                renderColaMonitor(data.colaEspera); 
+                renderDerivados(data.colaDerivados);
+            } catch(e) { console.error("Error dashboard", e); }
+        }
+
+        // --- RENDERIZADO DE VENTANILLAS ---
+        function renderVentanillas(agentes) { 
+            const grid = document.getElementById('gridVentanillas');
+            
+            if (!agentes || !agentes.length) {
+                grid.innerHTML = '<p class="text-gray-400 text-sm col-span-3 text-center py-4">Sin agentes activos.</p>';
+                return;
+            }
+            
+            grid.innerHTML = agentes.map(x => {
+                const ocupado = x.estado === 'ocupado';
+                const tData = x.ticket || {}; 
+                const startTime = tData.inicio ? new Date(tData.inicio).getTime() : 0;
+
+                return `
+                <div class="bg-white rounded-xl border-l-4 ${ocupado ? 'border-green-500' : 'border-gray-300'} shadow-sm overflow-hidden relative group hover:shadow-md transition-shadow">
+                    
+                    <div class="${ocupado ? 'bg-green-100' : 'bg-gray-100'} px-4 py-2 flex justify-between items-center border-b border-gray-200">
+                        <span class="font-bold text-xs text-gray-700 uppercase">Ventanilla ${x.numero || '?'}</span>
+                        <span class="text-[10px] font-black ${ocupado ? 'text-green-800' : 'text-gray-500'}">${ocupado ? 'ATENDIENDO' : 'DISPONIBLE'}</span>
+                    </div>
+                    
+                    <div class="p-4">
+                        <p class="font-bold text-blue-900 truncate mb-2" title="${x.nombre}">${x.nombre}</p>
+                        
+                        ${ocupado ? `
+                            <div class="flex justify-between items-end border-t border-gray-100 pt-2">
+                                <div>
+                                    <span class="text-3xl font-black text-gray-800 block leading-none">${tData.codigo || '--'}</span>
+                                    <span class="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-bold mt-1 inline-block">${tData.tipo || ''}</span>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-[10px] text-gray-400 font-bold uppercase">TIEMPO</p>
+                                    <p class="font-mono text-xl font-bold text-gray-700 agent-timer" data-start="${startTime}">00:00</p>
+                                </div>
+                            </div>
+                        ` : `
+                            <div class="h-12 flex items-center justify-center border border-dashed border-gray-200 rounded-lg">
+                                <p class="text-xs text-gray-400 italic">Esperando...</p>
+                            </div>
+                        `}
+                    </div>
+                </div>`;
+            }).join(''); 
+        }
+
+        // --- LÓGICA DEL RELOJ ---
+        function actualizarTimersAgentes() { 
+            const now = Date.now(); 
+            document.querySelectorAll('.agent-timer').forEach(el => { 
+                const start = parseInt(el.getAttribute('data-start')); 
+                
+                if (start && start > 0) {
+                    const diff = Math.floor((now - start) / 1000);
+                    
+                    if (diff >= 0) {
+                        const min = Math.floor(diff / 60).toString().padStart(2,'0');
+                        const sec = (diff % 60).toString().padStart(2,'0');
+                        
+                        if(diff >= 3600) {
+                            const h = Math.floor(diff / 3600).toString().padStart(2,'0');
+                            const m = Math.floor((diff % 3600) / 60).toString().padStart(2,'0');
+                            el.textContent = `${h}:${m}:${sec}`;
+                        } else {
+                            el.textContent = `${min}:${sec}`;
+                        }
+                        
+                        if(diff > 300) el.classList.add('text-red-600');
+                        else el.classList.remove('text-red-600');
+                    }
+                } else {
+                    el.textContent = "00:00"; 
+                }
+            }); 
+        }
+
+        // RESTO DE FUNCIONES VISUALES
+        function renderChart(d) { document.getElementById('chartTipos').innerHTML = !d.length ? '<p class="text-xs text-gray-400 italic">Sin datos.</p>' : d.map(x=>`<div class="flex items-center gap-2 text-xs"><span class="w-20 font-bold text-gray-600 truncate">${x._id}</span><div class="flex-grow bg-gray-100 rounded-full h-4 overflow-hidden"><div class="bg-blue-500 h-full rounded-full" style="width: ${(x.count/Math.max(...d.map(v=>v.count)))*100}%"></div></div><span class="font-bold text-blue-900 w-6 text-right">${x.count}</span></div>`).join(''); }
+        function renderColaMonitor(c) { document.getElementById('listaColaMonitor').innerHTML = c.length ? c.map(t=>`<div class="flex justify-between border-b border-gray-700 pb-1 mb-1"><span class="font-bold text-lg">${t.codigo}</span><span class="text-[10px] text-gray-400">${t.tipoTramite}</span></div>`).join('') : '<p class="text-gray-500 text-xs italic">Vacío.</p>'; }
+        function renderDerivados(l) { document.getElementById('listaDerivados').innerHTML = !l.length ? `<div class="text-center p-6 text-gray-400 bg-white rounded-xl border border-dashed text-sm">Sin pendientes.</div>` : l.map(t=>`<div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500 flex justify-between items-center"><div><div class="flex items-center gap-2 mb-1"><span class="text-xl font-black text-blue-900">${t.codigo}</span><span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 rounded">${t.tipoTramite}</span></div><p class="text-xs text-gray-600"><b>Motivo:</b> ${t.motivoDerivacion}</p></div><button onclick="iniciarAtencionJefe('${t._id}', '${t.codigo}', '${t.tipoTramite}', '${t.documentoCliente||''}')" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-700">ATENDER</button></div>`).join(''); }
+
+        async function buscarHistorial(i=false) {
+            let q="",s="",e=""; if(!i){q=document.getElementById('hSearchQuery').value; s=document.getElementById('hDateStart').value; e=document.getElementById('hDateEnd').value;} else { s=new Date().toISOString().split('T')[0]; document.getElementById('hDateStart').value=s; document.getElementById('hDateEnd').value=s; e=s; }
+            const tb=document.getElementById('tablaHistorial'); tb.innerHTML=`<tr><td colspan="6" class="p-8 text-center text-gray-400 animate-pulse">Buscando...</td></tr>`;
+            try {
+                const res = await fetch(`/api/tickets/historial/${sucursalId}?${new URLSearchParams({busqueda:q, fechaInicio:s, fechaFin:e})}`);
+                const reg = await res.json();
+                if(!reg.length) return tb.innerHTML=`<tr><td colspan="6" class="p-8 text-center text-gray-400 italic">No se encontraron tickets.</td></tr>`;
+                tb.innerHTML = reg.map(t=>`<tr class="hover:bg-slate-50 border-b border-gray-100 last:border-0 transition-colors"><td class="p-4"><div class="flex items-center gap-2"><span class="font-bold text-lg text-gray-800">${t.codigo}</span>${t.esPrioritario?'<span class="text-red-500 font-bold ml-1">★</span>':''}</div><div class="text-[10px] uppercase font-bold text-gray-400">${t.tipoTramite}</div></td><td class="p-4 text-xs text-gray-500 font-mono">${new Date(t.creadoEn).toLocaleString()}</td><td class="p-4 text-sm font-bold text-blue-600">${t.documentoCliente||'N/A'}</td><td class="p-4 text-xs"><div class="font-bold text-gray-700">${t.ventanillaAtendio?.nombre||'Pendiente'}</div><div class="text-[9px] text-gray-400 uppercase">${t.ventanillaAtendio?.rol||''}</div></td><td class="p-4 text-sm text-gray-600 max-w-xs break-words">${t.notasAtencion?`"${t.notasAtencion}"`:'--'} ${t.motivoDerivacion?`<div class="mt-1 text-xs text-purple-500 font-bold">Derivado: ${t.motivoDerivacion}</div>`:''}</td><td class="p-4 text-right"><span class="inline-block px-3 py-1 rounded border text-[10px] font-bold uppercase tracking-wider ${t.estado==='finalizado'?'text-green-600 bg-green-50 border-green-200':'text-yellow-600 bg-yellow-50 border-yellow-200'}">${t.estado}</span></td></tr>`).join('');
+            } catch(e){}
+        }
+
+        // --- GESTIÓN DE PERSONAL CON PRIORIDADES ---
+        // --- GESTIÓN DE PERSONAL CON PRIORIDADES ---
+        async function cargarPersonal() {
+            try {
+                const res = await fetch(`/api/usuarios/sucursal/${sucursalId}`);
+                const users = await res.json();
+                document.getElementById('listaPersonalBody').innerHTML = users.map(u => {
+                    let skillsStr = '<span class="text-gray-400 text-xs">Sin asignar</span>';
+                    
+                    if(u.skills && u.skills.length > 0) {
+                        const sorted = u.skills.sort((a,b) => a.prioridad - b.prioridad);
+                        skillsStr = sorted.map(s => {
+                            let color = 'bg-gray-100 text-gray-600';
+                            if(s.prioridad === 1) color = 'bg-blue-100 text-blue-700 font-bold';
+                            else if(s.prioridad === 2) color = 'bg-blue-50 text-blue-600';
+                            return `<span class="${color} text-[9px] px-1.5 py-0.5 rounded border border-blue-50" title="Prioridad ${s.prioridad}">${s.tipo.substring(0,3)}:${s.prioridad}</span>`;
+                        }).join(' ');
+                    }
+
+                    const uData = JSON.stringify(u).replace(/"/g, '&quot;');
+                    
+                    // Ocultamos el botón de eliminar para el propio Jefe que está viendo la pantalla (no puede borrarse a sí mismo)
+                    const botonEliminar = (u._id !== currentUser._id) 
+                        ? `<button onclick="eliminarEjecutivo('${u._id}', '${u.nombre}')" class="text-red-400 hover:text-red-600 text-xs font-bold bg-red-50 hover:bg-red-100 px-2 py-1 rounded flex-shrink-0" title="Eliminar Usuario">🗑️</button>` 
+                        : `<span class="w-7 inline-block flex-shrink-0"></span>`;
+
+                    // FIX VISUAL: Se agregó 'align-middle' a los <td> y se envolvieron los elementos 'flex' en un <div> interno
+                    return `<tr class="hover:bg-gray-50 transition-colors">
+                        <td class="p-3 font-medium text-gray-800 align-middle">${u.nombre}</td>
+                        <td class="p-3 text-gray-500 font-mono text-xs align-middle">${u.username}</td>
+                        <td class="p-3 align-middle"><span class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded text-[10px] uppercase font-bold">${u.rol}</span></td>
+                        <td class="p-3 font-bold text-gray-700 align-middle">${u.numeroVentanilla||'-'}</td>
+                        <td class="p-3 align-middle">
+                            <div class="flex gap-1 flex-wrap items-center">${skillsStr}</div>
+                        </td>
+                        <td class="p-3 align-middle">
+                            <div class="flex justify-end items-center gap-1">
+                                <button onclick="abrirModalEditar(${uData})" class="text-blue-500 hover:text-blue-700 text-xs font-bold bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded flex-shrink-0" title="Editar">✏️</button>
+                                <button onclick="resetearPassword('${u._id}', '${u.nombre}')" class="text-yellow-600 hover:text-yellow-700 text-xs font-bold bg-yellow-50 hover:bg-yellow-100 px-2 py-1 rounded flex-shrink-0" title="Reset Clave">🔑</button>
+                                ${botonEliminar}
+                            </div>
+                        </td>
+                    </tr>`;
+                }).join('');
+            } catch(e) {}
+        }
+
+        function abrirModalEditar(u) { 
+            document.getElementById('modalEditarUsuario').classList.remove('hidden'); 
+            
+            // Llenar nuevos inputs
+            document.getElementById('editUserId').value = u._id; 
+            document.getElementById('editUserNombre').value = u.nombre; 
+            document.getElementById('editUserUsername').value = u.username; 
+            document.getElementById('editUserVent').value = u.numeroVentanilla || 0; 
+            
+            const tiposPosibles = ['PAGOS', 'CONSULTAS', 'RECLAMOS', 'NUEVOS'];
+            const container = document.getElementById('skillsContainer');
+            container.innerHTML = '';
+
+            tiposPosibles.forEach(tipo => {
+                const skillActual = u.skills ? u.skills.find(s => s.tipo === tipo) : null;
+                const valorActual = skillActual ? skillActual.prioridad : 0;
+
+                container.innerHTML += `
+                <div class="flex justify-between items-center text-sm p-2 hover:bg-white rounded transition-colors border-b border-gray-100 last:border-0">
+                    <span class="font-medium text-gray-700">${tipo}</span>
+                    <select class="border border-gray-300 rounded text-xs p-1.5 outline-none focus:border-blue-500 skill-selector bg-white" data-type="${tipo}">
+                        <option value="0" ${valorActual === 0 ? 'selected' : ''}>⛔ No atiende</option>
+                        <option value="1" ${valorActual === 1 ? 'selected' : ''} class="font-bold text-blue-600">★ Prioridad 1 (Alta)</option>
+                        <option value="2" ${valorActual === 2 ? 'selected' : ''}>Prioridad 2 (Media)</option>
+                        <option value="3" ${valorActual === 3 ? 'selected' : ''}>Prioridad 3 (Baja)</option>
+                    </select>
+                </div>`;
+            });
+        }
+
+        async function guardarEdicionUsuario() { 
+            const id = document.getElementById('editUserId').value; 
+            const nombre = document.getElementById('editUserNombre').value;
+            const username = document.getElementById('editUserUsername').value;
+            const ventanilla = document.getElementById('editUserVent').value; 
+            
+            if(!nombre || !username) return alert("⚠️ Nombre y Usuario son obligatorios");
+
+            const selects = document.querySelectorAll('.skill-selector');
+            const skills = [];
+
+            selects.forEach(sel => {
+                const prioridad = parseInt(sel.value);
+                if (prioridad > 0) {
+                    skills.push({ tipo: sel.getAttribute('data-type'), prioridad: prioridad });
+                }
+            });
+
+            try { 
+                const res = await fetch('/api/usuarios/actualizar', { 
+                    method: 'POST', 
+                    headers: {'Content-Type':'application/json'}, 
+                    body: JSON.stringify({ id, nombre, username, skills, numeroVentanilla: ventanilla }) 
+                }); 
+                
+                const data = await res.json();
+                if(data.success) { 
+                    alert("✅ Usuario actualizado"); 
+                    document.getElementById('modalEditarUsuario').classList.add('hidden'); 
+                    cargarPersonal(); 
+                } else {
+                    alert("❌ " + (data.msg || "Error al actualizar")); 
+                }
+            } catch(e) { alert("Error de conexión"); } 
+        }
+
+        async function eliminarEjecutivo(id, nombre) {
+            if(confirm(`⚠️ ¿Estás seguro de eliminar al usuario ${nombre}?`)) {
+                try {
+                    const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    
+                    if(data.success) {
+                        alert("✅ Usuario eliminado exitosamente");
+                        cargarPersonal();
+                    } else {
+                        alert("❌ " + (data.msg || "Error al eliminar usuario"));
+                    }
+                } catch(e) {
+                    alert("❌ Error de comunicación con el servidor");
+                }
+            }
+        }
+
+        function subirVideo() { 
+            const input = document.getElementById('videoInput');
+            const f = input.files[0]; 
+            
+            if(!f) return alert("⚠️ Por favor, seleccione un archivo de video primero.");
+
+            // Elementos de la interfaz
+            const btn = document.getElementById('btnSubirVideo');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const progressText = document.getElementById('progressText');
+
+            // Preparar el botón y mostrar la barra
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            btn.textContent = "SUBIENDO...";
+            progressContainer.classList.remove('hidden');
+            progressText.classList.remove('hidden');
+            progressBar.style.width = '0%';
+            progressText.textContent = '0%';
+
+            // Preparar los datos
+            const fd = new FormData(); 
+            fd.append('videoFile', f); 
+            fd.append('sucursalId', sucursalId); 
+
+            // Usamos XMLHttpRequest para poder rastrear el progreso
+            const xhr = new XMLHttpRequest();
+
+            // Escuchar el progreso de la subida
+            xhr.upload.addEventListener("progress", (event) => {
+                if (event.lengthComputable) {
+                    const percentComplete = Math.round((event.loaded / event.total) * 100);
+                    progressBar.style.width = percentComplete + '%';
+                    progressText.textContent = percentComplete + '%';
+                }
+            });
+
+            // Cuando termine la petición (sea éxito o error)
+            xhr.addEventListener("load", () => {
+                // Restaurar el botón
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.textContent = "SUBIR VIDEO";
+                
+                if (xhr.status >= 200 && xhr.status < 300) {
+                    try {
+                        const data = JSON.parse(xhr.responseText);
+                        if(data.success) {
+                            alert("✅ Video subido y configurado correctamente.");
+                            input.value = ""; // Limpiar el input file
+                            // Ocultar barra
+                            setTimeout(() => {
+                                progressContainer.classList.add('hidden');
+                                progressText.classList.add('hidden');
+                            }, 1000);
+                        } else {
+                            alert("❌ Error: " + (data.msg || "No se pudo subir."));
+                        }
+                    } catch(e) {
+                        alert("✅ Subido (El servidor no devolvió JSON).");
+                    }
+                } else {
+                    alert("❌ Error del servidor al intentar subir el archivo.");
+                }
+            });
+
+            // Si hay un error de red (se cae el internet, servidor apagado)
+            xhr.addEventListener("error", () => {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+                btn.textContent = "SUBIR VIDEO";
+                alert("❌ Error de conexión al servidor.");
+            });
+
+            // Enviar la petición
+            xhr.open("POST", "/api/upload-video", true);
+            xhr.send(fd);
+        }
+        
+        async function crearEjecutivo() { const n=document.getElementById('newEjecName').value, u=document.getElementById('newEjecUser').value, p=document.getElementById('newEjecPass').value, v=document.getElementById('newEjecVent').value; if(!n||!u||!p||!v)return alert("Datos incompletos"); try{ const res=await fetch('/api/usuarios/crear', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nombre:n, username:u, password:p, sucursalId, rol:'ejecutivo', numeroVentanilla:v, skills:[]})}); if((await res.json()).success){ alert("Creado"); cargarPersonal(); document.getElementById('newEjecName').value=''; document.getElementById('newEjecUser').value=''; document.getElementById('newEjecPass').value=''; document.getElementById('newEjecVent').value=''; } else alert("Error"); }catch(e){alert("Error");} }
+        async function resetearPassword(id, n) { const p=prompt(`Nueva clave para ${n}:`); if(p) fetch('/api/usuarios/admin-reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetUserId:id, nuevaPassword:p})}).then(r=>r.ok?alert("OK"):alert("Error")); }
+        function abrirModalCambioClave(){document.getElementById('modalCambioClave').classList.remove('hidden');}
+        async function guardarMiClave(){ const o=document.getElementById('ownPassOld').value, n=document.getElementById('ownPassNew').value; if(o&&n) fetch('/api/usuarios/cambiar-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuarioId:currentUser._id, actual:o, nueva:n})}).then(r=>r.json()).then(d=>d.success?(alert("OK"),document.getElementById('modalCambioClave').classList.add('hidden')):alert(d.msg)); }
+        async function iniciarAtencionJefe(i,c,t,d){if(confirm("¿Atender?")){fetch('/api/tickets/atender-derivado',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticketId:i,usuarioId:currentUser._id})}); currentTicketId=i; document.getElementById('viewDashboard').classList.add('hidden'); document.getElementById('viewWorkspace').classList.remove('hidden'); document.getElementById('wkTicketCodigo').textContent=c; document.getElementById('wkTicketTipo').textContent=t; document.getElementById('wkDui').textContent=`DUI: ${d}`; secondsElapsed=0; if(timerInterval)clearInterval(timerInterval); timerInterval=setInterval(()=>{secondsElapsed++;document.getElementById('wkTimer').textContent=new Date(secondsElapsed*1000).toISOString().substr(14,5)},1000);}}
+        async function finalizarAtencionJefe(){if(confirm("¿Finalizar?")){fetch('/api/tickets/finalizar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticketId:currentTicketId,notas:document.getElementById('wkNotas').value,tiempoTotal:secondsElapsed})}); cancelarAtencionJefe(); cargarDatosDashboard();}}
+        function cancelarAtencionJefe(){document.getElementById('viewWorkspace').classList.add('hidden'); document.getElementById('viewDashboard').classList.remove('hidden'); clearInterval(timerInterval); currentTicketId=null;}
+        function logout(){sessionStorage.removeItem('anda_user'); window.location.href='/ventanilla.html';}
+    </script>
+</body>
+</html>

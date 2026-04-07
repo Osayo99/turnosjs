@@ -1,0 +1,776 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Super Admin - ANDA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        body { font-family: 'Outfit', sans-serif; }
+        input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; }
+    </style>
+</head>
+<body class="bg-gray-900 min-h-screen text-gray-100">
+
+    <div id="loginView" class="flex items-center justify-center min-h-screen bg-gray-900 p-4">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl border border-gray-700 w-full max-w-md">
+            <h1 class="text-3xl font-black text-white text-center mb-2">ANDA <span class="text-blue-500">SuperAdmin</span></h1>
+            <p class="text-gray-400 text-center text-sm mb-6">Acceso exclusivo para Gobernanza</p>
+            <div class="space-y-4" id="formLogin">
+                <input type="text" id="adminUser" placeholder="Usuario Super Admin" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl focus:border-blue-500 outline-none text-white transition-colors">
+                <input type="password" id="adminPass" placeholder="Contraseña" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl focus:border-blue-500 outline-none text-white transition-colors">
+                <button onclick="loginAdmin()" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold p-3 rounded-xl transition-transform active:scale-95">ENTRAR</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainView" class="hidden min-h-screen flex flex-col">
+        <header class="bg-gray-800 border-b border-gray-700 p-4 flex justify-between items-center sticky top-0 z-50 shadow-md">
+            <div class="flex items-center gap-4">
+                <h1 class="text-xl font-black cursor-pointer hover:text-blue-400 transition-colors" onclick="verGlobal()">ANDA <span class="text-blue-500">SuperAdmin</span></h1>
+                <span id="breadCrumb" class="text-gray-500 text-sm hidden flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg><span id="bcSucursalName" class="text-white font-bold">Sucursal</span></span>
+            </div>
+            <div class="flex items-center gap-4">
+                <div class="text-right hidden md:block"><p id="currentAdminName" class="font-bold text-sm text-white">--</p><button onclick="abrirModalMiClave()" class="text-[10px] text-blue-400 hover:text-blue-300 underline block w-full text-right">Cambiar mi clave</button></div>
+                <button onclick="logout()" class="text-xs text-red-400 border border-red-900 px-4 py-2 rounded-lg hover:bg-red-900/50 hover:text-red-200 transition-colors">SALIR</button>
+            </div>
+        </header>
+
+        <div class="p-4 md:p-8 flex-grow">
+            <div id="viewGlobal" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                
+                <div class="lg:col-span-1 space-y-6">
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="font-bold text-lg text-blue-400 flex items-center gap-2"><span>🏢</span> Sucursales</h2>
+                            <div class="flex gap-2">
+                                <span class="text-xs bg-gray-700 px-2 py-1 rounded text-gray-300" id="countSucursales">0</span>
+                                <button onclick="abrirModalCrearSucursal()" class="bg-blue-600 hover:bg-blue-500 text-white px-2 py-1 rounded text-xs font-bold" title="Nueva Sucursal">+</button>
+                            </div>
+                        </div>
+                        <div id="listaSucursales" class="space-y-3 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar"><p class="text-gray-500 text-sm text-center py-4">Cargando...</p></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-2 space-y-8">
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg relative overflow-hidden">
+                        <div class="absolute top-0 right-0 p-4 opacity-10"><svg class="w-24 h-24 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z"></path></svg></div>
+                        <h2 class="font-bold text-lg mb-4 text-green-400 flex items-center gap-2 relative z-10"><span>➕</span> Crear Jefe de Sucursal</h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 relative z-10">
+                            <select id="newJefeSucursal" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none"><option value="">Seleccione Sucursal...</option></select>
+                            <input type="text" id="newJefeNombre" placeholder="Nombre Completo" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none">
+                            <input type="text" id="newJefeUser" placeholder="Usuario" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none">
+                            <input type="password" id="newJefePass" placeholder="Contraseña" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none">
+                        </div>
+                        <button onclick="crearJefe()" class="bg-green-600 hover:bg-green-500 text-white text-sm font-bold px-6 py-3 rounded-xl shadow-lg shadow-green-900/20 transition-transform active:scale-95 relative z-10">Crear Cuenta Jefe</button>
+                    </div>
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg">
+                        <div class="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+                            <h2 class="font-bold text-lg flex items-center gap-2"><span>👥</span> Directorio Global</h2>
+                            <div class="relative w-full md:w-64"><span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-500">🔍</span><input type="text" id="searchUserGlobal" placeholder="Buscar..." class="w-full bg-gray-900 border border-gray-600 rounded-lg pl-10 pr-4 py-2 text-sm text-white outline-none focus:border-blue-500 transition-colors"></div>
+                        </div>
+                        <div class="overflow-x-auto rounded-lg border border-gray-700"><table class="w-full text-left text-sm text-gray-400"><thead class="bg-gray-900 text-xs uppercase font-bold text-gray-500"><tr><th class="p-4">Usuario</th><th class="p-4">Rol</th><th class="p-4">Sucursal</th><th class="p-4 text-right">Acción</th></tr></thead><tbody id="listaUsuariosGlobal" class="divide-y divide-gray-700 bg-gray-800"></tbody></table></div>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-lg mt-2">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-bold text-lg text-yellow-400 flex items-center gap-2"><span>📚</span> Base de Conocimiento (Guías para Ventanilla)</h2>
+                        <button onclick="abrirModalNuevaGuia()" class="bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-1 rounded text-xs font-bold">+ Nueva Guía</button>
+                    </div>
+                    
+                    <div id="listaGuiasAdmin" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <p class="text-gray-500 text-sm">Cargando guías...</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="viewBranch" class="hidden space-y-8 animate-fade-in">
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-blue-500/30 shadow-lg"><p class="text-xs text-blue-400 font-bold uppercase tracking-widest mb-1">Tickets Totales</p><h2 id="brTotal" class="text-4xl font-black text-white">0</h2></div>
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-green-500/30 shadow-lg"><p class="text-xs text-green-400 font-bold uppercase tracking-widest mb-1">Atendidos</p><h2 id="brAtendidos" class="text-4xl font-black text-white">0</h2></div>
+                    <div class="bg-gray-800 p-6 rounded-2xl border border-purple-500/30 shadow-lg"><p class="text-xs text-purple-400 font-bold uppercase tracking-widest mb-1">Gestión Jefatura</p><h2 id="brJefatura" class="text-4xl font-black text-white">0</h2></div>
+                </div>
+                <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 min-h-[600px] shadow-xl">
+                    <div class="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-6">
+                        <div><h2 class="font-bold text-2xl text-white flex items-center gap-2"><span>🔍</span> Auditoría de Tickets</h2><p class="text-sm text-gray-400 mt-1">Historial completo filtrado.</p></div>
+                        <div class="flex flex-col md:flex-row gap-4 bg-gray-900 p-3 rounded-xl border border-gray-600 w-full xl:w-auto">
+                            <div class="flex items-center gap-3"><div class="flex flex-col"><label class="text-[9px] text-gray-500 font-bold uppercase ml-1">Desde</label><input type="date" id="dateStart" class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-500"></div><div class="flex flex-col"><label class="text-[9px] text-gray-500 font-bold uppercase ml-1">Hasta</label><input type="date" id="dateEnd" class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-xs text-white outline-none focus:border-blue-500"></div></div>
+                            <div class="flex flex-col flex-grow"><label class="text-[9px] text-gray-500 font-bold uppercase ml-1">Búsqueda</label><div class="flex gap-2"><input type="text" id="searchBranchQuery" placeholder="Escriba para buscar..." class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white w-full md:w-64 outline-none focus:border-blue-500"><button onclick="buscarEnSucursal()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-1.5 rounded-lg text-xs tracking-wider transition-colors shadow-lg shadow-blue-900/30">BUSCAR</button></div></div>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-xl border border-gray-700"><table class="w-full text-left text-sm text-gray-300"><thead class="bg-gray-900 text-xs uppercase font-bold text-blue-400"><tr><th class="p-4">Ticket</th><th class="p-4">Fecha</th><th class="p-4">Cliente / DUI</th><th class="p-4">Atendido Por</th><th class="p-4">Nota</th><th class="p-4 text-right">Estado</th></tr></thead><tbody id="listaTicketsBranch" class="divide-y divide-gray-700 bg-gray-800/50"><tr><td colspan="6" class="p-12 text-center text-gray-500 italic">Seleccione filtros.</td></tr></tbody></table></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalNewSucursal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-600">
+            <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">🏢 Nueva Agencia</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Nombre de Agencia</label>
+                    <input type="text" id="crearSucName" placeholder="Ej: Agencia Santa Ana Centro" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Código Interno</label>
+                    <input type="text" id="crearSucCode" placeholder="Ej: SUC-002" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Ubicación / Dirección</label>
+                    <input type="text" id="crearSucDir" placeholder="Dirección completa..." class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="document.getElementById('modalNewSucursal').classList.add('hidden')" class="text-gray-400 font-bold text-sm px-4">Cancelar</button>
+                <button onclick="guardarNuevaSucursal()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-blue-500">Crear Agencia</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalEditSucursal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-600">
+            <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">✏️ Editar Agencia</h3>
+            
+            <input type="hidden" id="editSucId">
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Nombre de Agencia</label>
+                    <input type="text" id="editSucName" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Código Interno</label>
+                    <input type="text" id="editSucCode" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Ubicación / Dirección</label>
+                    <input type="text" id="editSucDir" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="document.getElementById('modalEditSucursal').classList.add('hidden')" class="text-gray-400 font-bold text-sm px-4">Cancelar</button>
+                <button onclick="guardarEdicionSucursal()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-blue-500">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+    <div id="modalEditUsuario" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-600">
+            <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">✏️ Editar Usuario</h3>
+            
+            <input type="hidden" id="editUserId">
+            
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Nombre Completo</label>
+                    <input type="text" id="editUserNombre" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Usuario</label>
+                    <input type="text" id="editUserUsername" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Rol</label>
+                    <select id="editUserRol" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                        <option value="ventanilla">Ventanilla</option>
+                        <option value="ejecutivo">Ejecutivo</option>
+                        <option value="jefe_sucursal">Jefe de Sucursal</option>
+                        <option value="super_admin">Super Admin</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Sucursal</label>
+                    <select id="editUserSucursal" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                        <option value="">Global / Sin sucursal</option>
+                        </select>
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="document.getElementById('modalEditUsuario').classList.add('hidden')" class="text-gray-400 font-bold text-sm px-4">Cancelar</button>
+                <button onclick="guardarEdicionUsuario()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-blue-500">Guardar Cambios</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalSheet" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-md border border-gray-600">
+            <h3 class="font-bold text-lg text-white mb-4 flex items-center gap-2">📊 Reportes a Google Sheets</h3>
+            <input type="hidden" id="confSucursalId">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">URL de Webhook (Apps Script)</label>
+                    <input type="text" id="confSheetId" placeholder="https://script.google.com/macros/s/..." class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-xs outline-none focus:border-blue-500">
+                    <p class="text-[10px] text-gray-500 mt-1">Pegue la URL generada al implementar la App Web.</p>
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Frecuencia de Envío</label>
+                    <select id="confFreq" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                        <option value="none">Desactivado</option>
+                        <option value="1h">Cada Hora</option>
+                        <option value="24h">Diariamente (11:00 PM)</option>
+                        <option value="7d">Semanalmente (Domingo)</option>
+                    </select>
+                </div>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="document.getElementById('modalSheet').classList.add('hidden')" class="text-gray-400 font-bold text-sm px-4">Cancelar</button>
+                <button onclick="guardarConfigSheet()" class="bg-green-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-green-500">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalGuia" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-lg border border-gray-600">
+            <h3 id="modalGuiaTitle" class="font-bold text-lg text-white mb-4">📚 Crear Guía de Procedimiento</h3>
+            
+            <input type="hidden" id="guiaIdEdit">
+
+            <div class="space-y-4">
+                <input type="text" id="guiaTitulo" placeholder="Título (Ej: Pago de Facturas Vencidas)" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-yellow-500">
+                <textarea id="guiaContenido" rows="5" placeholder="Describa el procedimiento paso a paso..." class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-yellow-500"></textarea>
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="document.getElementById('modalGuia').classList.add('hidden')" class="text-gray-400 font-bold text-sm">Cancelar</button>
+                <button id="btnGuardarGuia" onclick="guardarGuia()" class="bg-yellow-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-yellow-500">Publicar</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalMiClave" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-gray-800 w-full max-w-sm p-6 rounded-2xl shadow-2xl border border-gray-600">
+            <h3 class="text-lg font-bold text-white mb-4">Cambiar Mi Contraseña</h3>
+            <div class="space-y-3"><input type="password" id="myOldPass" placeholder="Actual" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white"><input type="password" id="myNewPass" placeholder="Nueva" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white"></div>
+            <div class="flex gap-3 justify-end mt-6"><button onclick="document.getElementById('modalMiClave').classList.add('hidden')" class="text-gray-400 font-bold text-sm px-4">Cancelar</button><button onclick="guardarMiClave()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-blue-500">Guardar</button></div>
+        </div>
+    </div>
+
+    <script>
+        let currentSucursalId = null, allUsersCache = [], allSucursalesCache = [], currentUserData = null;
+
+        // --- 1. VERIFICAR SESIÓN AL INICIAR ---
+        (function checkSession() {
+            const storedUser = localStorage.getItem('anda_session_admin');
+            if (storedUser) {
+                currentUserData = JSON.parse(storedUser);
+                document.getElementById('loginView').classList.add('hidden');
+                document.getElementById('mainView').classList.remove('hidden');
+                document.getElementById('currentAdminName').textContent = currentUserData.nombre;
+                cargarGlobal();
+            }
+        })();
+
+        // AUTH
+        function toggleRegister() { document.getElementById('formLogin').classList.toggle('hidden'); document.getElementById('formRegister').classList.toggle('hidden'); }
+        
+        async function loginAdmin() { 
+            const u = document.getElementById('adminUser').value;
+            const p = document.getElementById('adminPass').value; 
+            
+            if(!u||!p) return alert("Datos incompletos"); 
+            
+            try { 
+                const r = await fetch('/api/usuarios/login',{
+                    method:'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body:JSON.stringify({username:u,password:p})
+                }); 
+                const d = await r.json(); 
+                
+                if(d.success && d.user.rol === 'super_admin'){ 
+                    currentUserData = d.user;
+                    localStorage.setItem('anda_session_admin', JSON.stringify(d.user));
+
+                    document.getElementById('loginView').classList.add('hidden'); 
+                    document.getElementById('mainView').classList.remove('hidden'); 
+                    document.getElementById('currentAdminName').textContent = d.user.nombre; 
+                    cargarGlobal(); 
+                } else {
+                    alert("Acceso denegado"); 
+                }
+            } catch(e){ alert("Error de conexión"); } 
+        }
+
+        function logout() { 
+            localStorage.removeItem('anda_session_admin');
+            location.reload(); 
+        }
+
+        // --- GESTIÓN GLOBAL Y DE SUCURSALES ---
+        async function cargarGlobal() {
+            const r = await fetch('/api/admin/global-data'); 
+            const d = await r.json(); 
+            
+            allSucursalesCache = d.sucursales; 
+            allUsersCache = d.usuarios; 
+            document.getElementById('countSucursales').textContent = d.sucursales.length;
+            
+            const ls = document.getElementById('listaSucursales');
+            const sel = document.getElementById('newJefeSucursal'); 
+            
+            ls.innerHTML = ''; 
+            sel.innerHTML = '<option value="">Seleccione Sucursal...</option>';
+            
+            d.sucursales.forEach(s => {
+                ls.innerHTML += `
+                <div class="group flex justify-between items-center bg-gray-700/30 p-4 rounded-xl border border-transparent hover:border-blue-500 transition-all mb-2">
+                    <div onclick="entrarSucursal('${s._id}', '${s.nombre}')" class="cursor-pointer flex-grow">
+                        <p class="font-bold text-white group-hover:text-blue-400 text-sm">${s.nombre}</p>
+                        <p class="text-[10px] text-gray-500 uppercase tracking-wider">${s.codigo}</p>
+                    </div>
+                    <div class="flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                        <button onclick="abrirConfigSheet('${s._id}', '${s.googleSheetId||''}', '${s.frecuenciaExportacion||'none'}')" class="text-green-500 hover:text-green-300 text-xs font-bold bg-green-900/20 px-2 py-1 rounded" title="Reportes">📊</button>
+                        <button onclick="abrirModalEditarSucursal('${s._id}', '${s.nombre}', '${s.codigo}', '${s.direccion || ''}')" class="text-blue-400 hover:text-blue-300 text-xs font-bold bg-blue-900/20 px-2 py-1 rounded" title="Editar">✏️</button>
+                        <button onclick="eliminarSucursalFront('${s._id}')" class="text-red-400 hover:text-red-300 text-xs font-bold bg-red-900/20 px-2 py-1 rounded" title="Eliminar">🗑️</button>
+                    </div>
+                </div>`;
+                
+                sel.innerHTML += `<option value="${s._id}">${s.nombre}</option>`;
+            });
+            
+            renderUsers(allUsersCache);
+            cargarGuiasAdmin();
+        }
+
+        // --- GESTIÓN DE GUÍAS ---
+        async function cargarGuiasAdmin() {
+            try {
+                const res = await fetch('/api/guias');
+                const guias = await res.json();
+                const container = document.getElementById('listaGuiasAdmin');
+                
+                if(guias.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm col-span-full">No hay guías creadas.</p>';
+                    return;
+                }
+
+                container.innerHTML = guias.map(g => `
+                    <div class="bg-gray-700/50 p-4 rounded-xl border border-gray-600 relative group min-h-[100px] flex flex-col hover:border-blue-500 transition-colors">
+                        <h4 class="font-bold text-white text-sm mb-2 pr-16">${g.titulo}</h4>
+                        <p class="text-xs text-gray-400 line-clamp-3 flex-grow">${g.contenido}</p>
+                        <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button onclick="prepararEdicion('${g._id}', '${escapeHtml(g.titulo)}', '${escapeHtml(g.contenido)}')" class="bg-blue-600 hover:bg-blue-500 text-white rounded p-1.5" title="Editar">✏️</button>
+                            <button onclick="borrarGuia('${g._id}')" class="bg-red-600 hover:bg-red-500 text-white rounded p-1.5" title="Eliminar">🗑️</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch(e) { console.error(e); }
+        }
+
+        function prepararEdicion(id, titulo, contenido) {
+            document.getElementById('guiaIdEdit').value = id;
+            document.getElementById('guiaTitulo').value = titulo;
+            document.getElementById('guiaContenido').value = contenido;
+            document.getElementById('modalGuiaTitle').textContent = "✏️ Editar Guía";
+            document.getElementById('btnGuardarGuia').textContent = "Actualizar";
+            document.getElementById('modalGuia').classList.remove('hidden');
+        }
+
+        function abrirModalNuevaGuia() {
+            document.getElementById('guiaIdEdit').value = ""; 
+            document.getElementById('guiaTitulo').value = "";
+            document.getElementById('guiaContenido').value = "";
+            document.getElementById('modalGuiaTitle').textContent = "📚 Nueva Guía";
+            document.getElementById('btnGuardarGuia').textContent = "Publicar";
+            document.getElementById('modalGuia').classList.remove('hidden');
+        }
+
+        async function guardarGuia() {
+            const id = document.getElementById('guiaIdEdit').value;
+            const titulo = document.getElementById('guiaTitulo').value;
+            const contenido = document.getElementById('guiaContenido').value;
+            if(!titulo || !contenido) return alert("Complete ambos campos");
+            const url = id ? `/api/guias/${id}` : '/api/guias';
+            const method = id ? 'PUT' : 'POST';
+            try {
+                const res = await fetch(url, { method: method, headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ titulo, contenido }) });
+                if(res.ok) { document.getElementById('modalGuia').classList.add('hidden'); cargarGuiasAdmin(); } else { alert("Error al guardar"); }
+            } catch(e) { alert("Error de conexión"); }
+        }
+
+        async function borrarGuia(id) { if(confirm('¿Borrar esta guía permanentemente?')) { await fetch(`/api/guias/${id}`, { method: 'DELETE' }); cargarGuiasAdmin(); } }
+        function escapeHtml(text) { if (!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/\n/g, "\\n"); }
+
+        // --- CREAR SUCURSAL ---
+        function abrirModalCrearSucursal() { document.getElementById('modalNewSucursal').classList.remove('hidden'); }
+        async function guardarNuevaSucursal() {
+            const nombre = document.getElementById('crearSucName').value;
+            const codigo = document.getElementById('crearSucCode').value;
+            const direccion = document.getElementById('crearSucDir').value;
+            if(!nombre || !codigo) return alert("Nombre y Código son obligatorios");
+            try {
+                const res = await fetch('/api/sucursales', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ nombre, codigo, direccion }) });
+                const data = await res.json();
+                if(data._id) { alert("✅ Agencia creada exitosamente"); document.getElementById('modalNewSucursal').classList.add('hidden'); document.getElementById('crearSucName').value = ''; document.getElementById('crearSucCode').value = ''; document.getElementById('crearSucDir').value = ''; cargarGlobal(); } else { alert("Error al crear agencia"); }
+            } catch(e) { alert("Error de conexión"); }
+        }
+
+        // --- EDITAR Y ELIMINAR SUCURSALES ---
+        function abrirModalEditarSucursal(id, nombre, codigo, direccion) {
+            document.getElementById('editSucId').value = id;
+            document.getElementById('editSucName').value = nombre;
+            document.getElementById('editSucCode').value = codigo;
+            document.getElementById('editSucDir').value = direccion;
+            document.getElementById('modalEditSucursal').classList.remove('hidden');
+        }
+
+        async function guardarEdicionSucursal() {
+            const id = document.getElementById('editSucId').value;
+            const nombre = document.getElementById('editSucName').value;
+            const codigo = document.getElementById('editSucCode').value;
+            const direccion = document.getElementById('editSucDir').value;
+
+            if(!nombre || !codigo) return alert("⚠️ El Nombre y Código son obligatorios");
+
+            try {
+                const res = await fetch(`/api/sucursales/${id}`, { 
+                    method: 'PUT', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify({ nombre, codigo, direccion }) 
+                });
+                const data = await res.json();
+                
+                if(data.success) { 
+                    alert("✅ Agencia actualizada correctamente"); 
+                    document.getElementById('modalEditSucursal').classList.add('hidden'); 
+                    cargarGlobal(); 
+                } else { 
+                    alert("❌ " + (data.msg || "Error al actualizar")); 
+                }
+            } catch(e) { 
+                alert("❌ Error de comunicación con el servidor"); 
+            }
+        }
+
+        async function eliminarSucursalFront(id) {
+            if(confirm('⚠️ ¿Estás completamente seguro de eliminar esta agencia?\n\nEsto podría afectar el historial si hay tickets enlazados a ella.')) {
+                try {
+                    const res = await fetch(`/api/sucursales/${id}`, { method: 'DELETE' });
+                    const data = await res.json();
+                    
+                    if(data.success) {
+                        alert("✅ Agencia eliminada exitosamente");
+                        cargarGlobal();
+                    } else {
+                        alert("❌ " + (data.msg || "Error al eliminar la agencia"));
+                    }
+                } catch(e) {
+                    alert("❌ Error de comunicación con el servidor");
+                }
+            }
+        }
+
+        // --- RESTO DE FUNCIONES ---
+        function renderUsers(users) { 
+            const container = document.getElementById('listaUsuariosGlobal');
+            
+            if (users.length) {
+                container.innerHTML = users.map(u => `
+                    <tr class="hover:bg-gray-700/50 border-b border-gray-700 last:border-0 transition-colors">
+                        <td class="p-4 font-medium text-white">
+                            ${u.nombre}
+                            <div class="text-xs text-gray-500">@${u.username}</div>
+                        </td>
+                        <td class="p-4">
+                            <span class="bg-gray-700 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">
+                                ${u.rol.replace('_',' ')}
+                            </span>
+                        </td>
+                        <td class="p-4 text-xs text-gray-400">
+                            ${u.sucursal ? u.sucursal.nombre : 'Global'}
+                        </td>
+                        <td class="p-4 text-right flex justify-end gap-2">
+                            <button onclick="abrirModalEditarUsuario('${u._id}', '${u.nombre}', '${u.username}', '${u.rol}', '${u.sucursal ? u.sucursal._id : ''}')" class="text-blue-400 hover:text-white px-2 py-1 rounded text-xs font-bold" title="Editar Usuario">✏️</button>
+                            <button onclick="resetUserPass('${u._id}', '${u.nombre}')" class="text-yellow-400 hover:text-white px-2 py-1 rounded text-xs font-bold" title="Resetear Clave">🔑</button>
+                            <button onclick="eliminar('${u._id}')" class="text-red-400 hover:text-white px-2 py-1 rounded text-xs font-bold" title="Eliminar Usuario">🗑️</button>
+                        </td>
+                    </tr>
+                `).join('');
+            } else {
+                container.innerHTML = '<tr><td colspan="4" class="p-4 text-center">Vacío.</td></tr>';
+            }
+        }
+
+        // FUNCIONES PARA EDITAR USUARIOS
+        function abrirModalEditarUsuario(id, nombre, username, rol, sucursalId) {
+            document.getElementById('editUserId').value = id;
+            document.getElementById('editUserNombre').value = nombre;
+            document.getElementById('editUserUsername').value = username;
+            document.getElementById('editUserRol').value = rol;
+            
+            // Poblar las sucursales antes de pre-seleccionar
+            const selSucursal = document.getElementById('editUserSucursal');
+            selSucursal.innerHTML = '<option value="">Global / Sin sucursal</option>';
+            allSucursalesCache.forEach(s => {
+                selSucursal.innerHTML += `<option value="${s._id}">${s.nombre}</option>`;
+            });
+            
+            document.getElementById('editUserSucursal').value = sucursalId || '';
+            document.getElementById('modalEditUsuario').classList.remove('hidden');
+        }
+
+        async function guardarEdicionUsuario() {
+            const id = document.getElementById('editUserId').value;
+            const nombre = document.getElementById('editUserNombre').value;
+            const username = document.getElementById('editUserUsername').value;
+            const rol = document.getElementById('editUserRol').value;
+            const sucursalId = document.getElementById('editUserSucursal').value;
+
+            if(!nombre || !username) return alert("⚠️ Nombre y Usuario son obligatorios");
+
+            try {
+                const r = await fetch('/api/admin/editar-usuario', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ id, nombre, username, rol, sucursalId: sucursalId || null })
+                });
+                
+                const d = await r.json();
+                
+                if(d.success) {
+                    alert("✅ " + d.msg);
+                    document.getElementById('modalEditUsuario').classList.add('hidden');
+                    cargarGlobal(); // Recarga la tabla para ver los cambios
+                } else {
+                    alert("❌ Falló: " + (d.msg || "Error desconocido."));
+                }
+            } catch(e) {
+                alert("❌ Error de comunicación con el servidor.");
+                console.error(e);
+            }
+        }
+        
+        async function crearJefe() { 
+            const s = document.getElementById('newJefeSucursal').value;
+            const n = document.getElementById('newJefeNombre').value;
+            const u = document.getElementById('newJefeUser').value;
+            const p = document.getElementById('newJefePass').value; 
+
+            if (!s || !n || !u || !p) {
+                return alert("⚠️ Faltan datos por completar."); 
+            }
+
+            try {
+                const r = await fetch('/api/admin/crear-usuario', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        sucursalId: s, 
+                        nombre: n, 
+                        username: u, 
+                        password: p, 
+                        rol: 'jefe_sucursal' 
+                    })
+                });
+                
+                if (!r.headers.get('content-type')?.includes('application/json')) {
+                    throw new Error("El servidor no respondió con JSON válido.");
+                }
+
+                const d = await r.json(); 
+
+                if (d.success) {
+                    alert("✅ " + d.msg);
+                    document.getElementById('newJefeNombre').value = '';
+                    document.getElementById('newJefeUser').value = '';
+                    document.getElementById('newJefePass').value = '';
+                    document.getElementById('newJefeSucursal').value = '';
+                    cargarGlobal();
+                } else {
+                    alert("❌ Falló: " + (d.msg || "Error desconocido al crear."));
+                }
+            } catch (error) {
+                alert("❌ Error de comunicación con el servidor.");
+                console.error("Error en crearJefe:", error);
+            }
+        }
+
+        function abrirConfigSheet(id, sid, f) { 
+            document.getElementById('modalSheet').classList.remove('hidden'); 
+            document.getElementById('confSucursalId').value = id; 
+            document.getElementById('confSheetId').value = sid; 
+            document.getElementById('confFreq').value = f; 
+        }
+
+        async function guardarConfigSheet() { 
+            const id = document.getElementById('confSucursalId').value;
+            const s = document.getElementById('confSheetId').value;
+            const f = document.getElementById('confFreq').value; 
+
+            try {
+                const r = await fetch('/api/admin/config-export', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sucursalId: id, sheetId: s, frecuencia: f })
+                });
+                
+                const d = await r.json();
+                
+                if (d.success) {
+                    alert("Configuración Guardada");
+                    document.getElementById('modalSheet').classList.add('hidden');
+                    cargarGlobal();
+                } else {
+                    alert("Error al guardar la configuración");
+                }
+            } catch (e) {
+                alert("Error de red");
+                console.error(e);
+            }
+        }
+
+        function verGlobal() { 
+            document.getElementById('viewBranch').classList.add('hidden'); 
+            document.getElementById('viewGlobal').classList.remove('hidden'); 
+            document.getElementById('breadCrumb').classList.add('hidden'); 
+            currentSucursalId = null; 
+        }
+
+        async function entrarSucursal(id, n) { 
+            currentSucursalId = id; 
+            document.getElementById('viewGlobal').classList.add('hidden'); 
+            document.getElementById('viewBranch').classList.remove('hidden'); 
+            document.getElementById('breadCrumb').classList.remove('hidden'); 
+            document.getElementById('bcSucursalName').textContent = n; 
+            
+            // Limpiar filtros al entrar
+            document.getElementById('searchBranchQuery').value = ""; 
+            document.getElementById('dateStart').value = ""; 
+            document.getElementById('dateEnd').value = ""; 
+            
+            document.getElementById('listaTicketsBranch').innerHTML = `
+                <tr><td colspan="6" class="p-12 text-center text-gray-500 italic">Filtre para ver datos.</td></tr>
+            `; 
+        }
+
+        async function buscarEnSucursal() { 
+            if (!currentSucursalId) return; 
+            
+            const q = document.getElementById('searchBranchQuery').value;
+            const s = document.getElementById('dateStart').value;
+            const e = document.getElementById('dateEnd').value;
+            const tb = document.getElementById('listaTicketsBranch'); 
+            
+            tb.innerHTML = `<tr><td colspan="6" class="p-12 text-center text-gray-500 animate-pulse">Buscando...</td></tr>`; 
+            
+            try { 
+                const r = await fetch(`/api/admin/sucursal/${currentSucursalId}?busqueda=${q}&fechaInicio=${s}&fechaFin=${e}`); 
+                const d = await r.json(); 
+                
+                document.getElementById('brTotal').textContent = d.stats.total; 
+                document.getElementById('brAtendidos').textContent = d.stats.atendidos; 
+                document.getElementById('brJefatura').textContent = d.stats.atendidosJefatura; 
+                
+                if (!d.registros.length) {
+                    tb.innerHTML = `<tr><td colspan="6" class="p-12 text-center text-gray-500 italic">Sin resultados.</td></tr>`;
+                } else {
+                    tb.innerHTML = d.registros.map(t => `
+                        <tr class="hover:bg-gray-700/30 border-b border-gray-700 last:border-0 transition-colors">
+                            <td class="p-4">
+                                <span class="font-bold text-xl text-white">${t.codigo}</span>
+                                <div class="text-[10px] text-gray-500">${t.tipoTramite}</div>
+                            </td>
+                            <td class="p-4 text-xs text-gray-400 font-mono">
+                                ${new Date(t.creadoEn).toLocaleString()}
+                            </td>
+                            <td class="p-4 text-sm text-blue-300">
+                                ${t.documentoCliente || 'N/A'}
+                            </td>
+                            <td class="p-4 text-xs text-gray-300">
+                                ${t.ventanillaAtendio?.nombre || 'Pendiente'}
+                            </td>
+                            <td class="p-4 text-sm break-words">
+                                ${t.notasAtencion || '--'}
+                            </td>
+                            <td class="p-4 text-right">
+                                <span class="px-2 py-1 rounded text-[10px] font-bold ${t.estado === 'finalizado' ? 'text-green-400 bg-green-900/20' : 'text-yellow-400 bg-yellow-900/20'}">
+                                    ${t.estado}
+                                </span>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch(e) {
+                console.error("Error buscando en sucursal:", e);
+                tb.innerHTML = `<tr><td colspan="6" class="p-12 text-center text-red-500 italic">Error al buscar.</td></tr>`;
+            } 
+        }
+
+        // Escucha del buscador global
+        document.getElementById('searchUserGlobal').addEventListener('input', (e) => {
+            const term = e.target.value.toLowerCase();
+            const filtrados = allUsersCache.filter(u => 
+                u.nombre.toLowerCase().includes(term) || u.username.toLowerCase().includes(term)
+            );
+            renderUsers(filtrados);
+        });
+
+        async function resetUserPass(id, n) { 
+            const p = prompt(`Nueva clave para ${n}:`); 
+            if (!p) return;
+            
+            try {
+                const r = await fetch('/api/usuarios/admin-reset-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetUserId: id, nuevaPassword: p })
+                });
+                
+                if (r.ok) {
+                    alert("✅ Clave actualizada correctamente.");
+                } else {
+                    alert("❌ Error al actualizar clave.");
+                }
+            } catch(e) {
+                console.error(e);
+            }
+        }
+
+        async function eliminar(id) { 
+            if (confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
+                try {
+                    await fetch('/api/admin/eliminar-usuario', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id })
+                    });
+                    cargarGlobal();
+                } catch(e) {
+                    console.error(e);
+                }
+            } 
+        }
+
+        function abrirModalMiClave() { 
+            document.getElementById('modalMiClave').classList.remove('hidden'); 
+        }
+
+        async function guardarMiClave() { 
+            const o = document.getElementById('myOldPass').value;
+            const n = document.getElementById('myNewPass').value; 
+            
+            try {
+                const r = await fetch('/api/usuarios/cambiar-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuarioId: currentUserData._id, actual: o, nueva: n })
+                });
+                
+                const d = await r.json();
+                
+                if (d.success) {
+                    alert("✅ Contraseña cambiada correctamente.");
+                    document.getElementById('modalMiClave').classList.add('hidden');
+                    document.getElementById('myOldPass').value = '';
+                    document.getElementById('myNewPass').value = '';
+                } else {
+                    alert("❌ " + d.msg);
+                }
+            } catch(e) {
+                console.error(e);
+                alert("Error de conexión");
+            }
+        }
+    </script>
+</body>
+</html>

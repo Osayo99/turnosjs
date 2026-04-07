@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>ANDA - Selección de Dispositivo</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        body { font-family: 'Outfit', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 h-screen flex items-center justify-center p-4 bg-[url('https://www.anda.gob.sv/wp-content/uploads/2023/04/slider-bg.jpg')] bg-cover bg-center bg-no-repeat bg-blend-overlay bg-white/90">
+
+    <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-md text-center border border-blue-100">
+        <h1 class="text-3xl font-black text-blue-900 mb-2">ANDA GESTIÓN</h1>
+        <p class="text-blue-500 font-bold text-sm uppercase tracking-widest mb-8">Configuración de Dispositivo</p>
+
+        <div id="step1" class="space-y-4 animate-fade-in-up">
+            <div class="text-left">
+                <label class="text-xs font-bold text-gray-400 uppercase ml-1">Paso 1: Seleccione Agencia</label>
+                <select id="sucursalSelect" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-gray-700 outline-none focus:border-blue-500 transition-all mt-1">
+                    <option value="">Cargando agencias...</option>
+                </select>
+            </div>
+            <button onclick="irPaso2()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-xl shadow-lg shadow-blue-200 transition-transform active:scale-95">
+                CONTINUAR
+            </button>
+        </div>
+
+        <div id="step2" class="hidden space-y-4 animate-fade-in-up">
+            <div class="text-left">
+                <label class="text-xs font-bold text-gray-400 uppercase ml-1">Paso 2: Tipo de Dispositivo</label>
+                <div class="grid grid-cols-1 gap-3 mt-1">
+                    <button onclick="seleccionarRol('kiosco')" class="flex items-center gap-3 p-4 border border-slate-200 rounded-xl hover:bg-blue-50 hover:border-blue-500 transition-all group text-left">
+                        <span class="text-2xl">🎫</span>
+                        <div>
+                            <p class="font-bold text-gray-800 group-hover:text-blue-700">Kiosco de Tickets</p>
+                            <p class="text-xs text-gray-400">Para uso de los clientes</p>
+                        </div>
+                    </button>
+                    <button onclick="seleccionarRol('pantalla')" class="flex items-center gap-3 p-4 border border-slate-200 rounded-xl hover:bg-purple-50 hover:border-purple-500 transition-all group text-left">
+                        <span class="text-2xl">📺</span>
+                        <div>
+                            <p class="font-bold text-gray-800 group-hover:text-purple-700">Monitor TV</p>
+                            <p class="text-xs text-gray-400">Pantalla de sala de espera</p>
+                        </div>
+                    </button>
+                    <button onclick="seleccionarRol('ventanilla')" class="flex items-center gap-3 p-4 border border-slate-200 rounded-xl hover:bg-green-50 hover:border-green-500 transition-all group text-left">
+                        <span class="text-2xl">👨‍💻</span>
+                        <div>
+                            <p class="font-bold text-gray-800 group-hover:text-green-700">Ventanilla / Staff</p>
+                            <p class="text-xs text-gray-400">PC de empleado</p>
+                        </div>
+                    </button>
+                </div>
+            </div>
+            <button onclick="location.reload()" class="text-xs text-gray-400 underline mt-4">Volver al inicio</button>
+        </div>
+    </div>
+
+    <script>
+        // Cargar sucursales al iniciar
+        fetch('/api/sucursales')
+            .then(res => res.json())
+            .then(data => {
+                const sel = document.getElementById('sucursalSelect');
+                sel.innerHTML = '<option value="">-- Seleccione una Agencia --</option>';
+                data.forEach(s => {
+                    sel.innerHTML += `<option value="${s._id}">${s.codigo} - ${s.nombre}</option>`;
+                });
+            })
+            .catch(err => {
+                document.getElementById('sucursalSelect').innerHTML = '<option>Error cargando datos</option>';
+            });
+
+        function irPaso2() {
+            const id = document.getElementById('sucursalSelect').value;
+            if(!id) return alert("Por favor seleccione una agencia.");
+            localStorage.setItem('anda_sucursal_id', id);
+            
+            document.getElementById('step1').classList.add('hidden');
+            document.getElementById('step2').classList.remove('hidden');
+        }
+
+        function seleccionarRol(rol) {
+            if(rol === 'kiosco') window.location.href = '/kiosco.html';
+            if(rol === 'pantalla') window.location.href = '/monitor.html';
+            if(rol === 'ventanilla') window.location.href = '/ventanilla.html';
+        }
+    </script>
+</body>
+</html>

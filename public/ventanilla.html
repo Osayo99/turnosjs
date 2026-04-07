@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Portal de Empleado - ANDA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script> 
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
+        body { font-family: 'Outfit', sans-serif; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+        /* Scrollbar personalizado */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen p-4 md:p-6">
+
+    <header class="flex justify-between items-center mb-6 bg-white p-4 rounded-xl shadow-sm border border-blue-100">
+        <div>
+            <h1 class="text-xl font-black text-blue-900">ANDA <span class="text-blue-400 font-normal">Staff</span></h1>
+            <div class="flex items-center gap-2 mt-1">
+                <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <p id="sucursalDisplay" class="text-xs font-bold text-gray-500 uppercase tracking-wide">Cargando...</p>
+            </div>
+        </div>
+        <div id="userInfo" class="flex items-center gap-4 hidden">
+            <div class="text-right hidden sm:block">
+                <p id="userNameDisplay" class="font-bold text-sm text-blue-900">--</p>
+                <button onclick="abrirModalClave()" class="text-[10px] text-blue-500 hover:text-blue-700 underline block w-full text-right">Cambiar mi clave</button>
+            </div>
+            <button onclick="logout()" class="bg-red-50 text-red-600 hover:bg-red-100 px-4 py-2 rounded-lg text-xs font-bold uppercase">Salir</button>
+        </div>
+    </header>
+
+    <div id="loginView" class="max-w-md mx-auto bg-white p-8 rounded-2xl shadow-xl border border-blue-50">
+        <h2 class="text-2xl font-bold mb-6 text-blue-900 text-center">Acceso de Personal</h2>
+        <div id="formLogin" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Usuario</label>
+                <input type="text" id="loginUser" placeholder="Ej: abonilla" class="w-full p-3 border rounded-xl bg-slate-50 outline-none focus:border-blue-500">
+            </div>
+            <div>
+                <label class="block text-xs font-bold text-gray-400 uppercase mb-2">Contraseña</label>
+                <input type="password" id="loginPass" placeholder="******" class="w-full p-3 border rounded-xl bg-slate-50 outline-none focus:border-blue-500">
+            </div>
+            <button onclick="login()" class="w-full bg-blue-600 hover:bg-blue-700 text-white p-4 rounded-xl font-bold shadow-lg shadow-blue-200 transition-transform active:scale-95">
+                INICIAR SESIÓN
+            </button>
+        </div>
+    </div>
+
+    <div id="dashboardView" class="hidden max-w-[90rem] mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6 h-[80vh]">
+        
+        <div class="lg:col-span-1 flex flex-col gap-4">
+            <div class="bg-white p-6 rounded-3xl shadow-lg border border-blue-100 text-center flex-grow flex flex-col justify-center relative overflow-hidden">
+                
+                <div id="stateWaiting" class="flex flex-col items-center justify-center h-full">
+                    <div class="w-20 h-20 bg-blue-50 rounded-full flex items-center justify-center mb-4 text-3xl">💤</div>
+                    <h2 class="text-xl font-bold text-blue-900 mb-2">Ventanilla Libre</h2>
+                    <button onclick="llamarSiguiente()" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-200 font-bold flex items-center justify-center gap-2 transition-transform hover:-translate-y-1">
+                        🔔 LLAMAR SIGUIENTE
+                    </button>
+                </div>
+
+                <div id="stateActive" class="hidden flex flex-col h-full">
+                    <div class="flex-grow">
+                        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Atendiendo Ticket</p>
+                        <h2 id="currentTicket" class="text-7xl font-black text-blue-900 mb-2">--</h2>
+                        <div id="prioBadge" class="hidden bg-red-100 text-red-600 text-xs font-bold px-3 py-1 rounded-full mb-2 inline-block">★ PRIORITARIO</div>
+                        <p id="currentTramite" class="text-sm font-bold text-blue-500">--</p>
+                        
+                        <div class="mt-6 mb-6 p-4 bg-slate-900 rounded-xl text-white shadow-inner">
+                            <p class="text-[10px] text-gray-400 uppercase mb-1">Tiempo de Atención</p>
+                            <div id="timerDisplay" class="text-5xl font-mono font-bold tracking-widest">00:00</div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mt-auto">
+                        <button onclick="volverALlamar()" class="py-3 bg-orange-50 text-orange-600 border border-orange-100 rounded-lg font-bold text-xs hover:bg-orange-100">
+                            🔊 RE-LLAMAR
+                        </button>
+                        <button onclick="mostrarDerivacion()" class="py-3 bg-purple-50 text-purple-600 border border-purple-100 rounded-lg font-bold text-xs hover:bg-purple-100">
+                            ↗ DERIVAR
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="workspacePanel" class="lg:col-span-2 hidden flex-col h-full">
+            <div class="bg-white p-6 rounded-3xl shadow-sm border border-gray-200 flex-grow flex flex-col h-full">
+                <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
+                    <h3 class="font-bold text-blue-900 flex items-center gap-2">📝 Notas de Gestión</h3>
+                    <div class="text-xs text-gray-400" id="clientDuiDisplay">DUI: --</div>
+                </div>
+                <textarea id="notasInput" class="flex-grow w-full p-4 bg-yellow-50/50 border border-yellow-100 rounded-xl resize-none focus:outline-none focus:ring-2 focus:ring-yellow-400 text-gray-700 text-lg" placeholder="Ingrese detalles de la atención..."></textarea>
+                <div class="mt-4 pt-4 border-t border-gray-100 flex justify-end">
+                    <button onclick="finalizarAtencion()" class="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-xl font-bold shadow-lg shadow-green-200 flex items-center gap-2 transition-transform hover:-translate-y-1 w-full md:w-auto justify-center">
+                        <span>✅</span> FINALIZAR Y GUARDAR
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="lg:col-span-1 bg-blue-50/50 rounded-3xl border border-blue-100 p-4 flex flex-col h-full">
+            <div class="flex items-center gap-2 mb-4 pb-2 border-b border-blue-200">
+                <span class="text-xl">📚</span>
+                <h3 class="font-bold text-blue-900 text-sm uppercase tracking-wider">Base de Ayuda</h3>
+            </div>
+            
+            <div id="knowledgeList" class="flex-grow overflow-y-auto space-y-3 pr-2 custom-scrollbar">
+                <p class="text-xs text-gray-400 text-center mt-10">Cargando guías...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalLeerGuia" class="hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-2xl max-h-[80vh] flex flex-col rounded-2xl shadow-2xl animate-fade-in-up border border-blue-100">
+            <div class="flex justify-between items-start p-6 border-b border-gray-100 bg-blue-50/30 rounded-t-2xl">
+                <div class="flex items-center gap-3">
+                    <span class="text-3xl">📖</span>
+                    <h3 id="popupTitulo" class="text-2xl font-black text-blue-900 leading-tight">--</h3>
+                </div>
+                <button onclick="document.getElementById('modalLeerGuia').classList.add('hidden')" class="text-gray-400 hover:text-red-500 text-2xl font-bold transition-colors">&times;</button>
+            </div>
+            
+            <div class="p-8 overflow-y-auto custom-scrollbar flex-grow bg-white">
+                <div id="popupContenido" class="prose prose-blue max-w-none text-gray-700 whitespace-pre-line leading-relaxed text-lg">
+                    </div>
+            </div>
+            
+            <div class="p-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex justify-end">
+                <button onclick="document.getElementById('modalLeerGuia').classList.add('hidden')" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-blue-200 transition-transform hover:-translate-y-1">
+                    Entendido
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalDerivar" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md p-6 rounded-2xl shadow-2xl animate-fade-in-up">
+            <h3 class="text-lg font-bold text-blue-900 mb-4">Derivar a Jefatura</h3>
+            <p class="text-sm text-gray-600 mb-2">Motivo:</p>
+            <textarea id="motivoDerivacion" class="w-full p-3 border rounded-xl mb-4 h-24 resize-none focus:border-blue-500 outline-none"></textarea>
+            <div class="flex gap-3 justify-end">
+                <button onclick="document.getElementById('modalDerivar').classList.add('hidden')" class="text-gray-500 font-bold text-sm px-4">Cancelar</button>
+                <button onclick="confirmarDerivacion()" class="bg-purple-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-purple-700">Enviar a Jefe</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalClave" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white w-full max-w-sm p-6 rounded-2xl shadow-2xl">
+            <h3 class="text-lg font-bold text-blue-900 mb-4">Cambiar Contraseña</h3>
+            <div class="space-y-3">
+                <input type="password" id="passActual" placeholder="Contraseña Actual" class="w-full p-3 border rounded-xl">
+                <input type="password" id="passNueva" placeholder="Nueva Contraseña" class="w-full p-3 border rounded-xl">
+            </div>
+            <div class="flex gap-3 justify-end mt-6">
+                <button onclick="document.getElementById('modalClave').classList.add('hidden')" class="text-gray-500 font-bold text-sm px-4">Cancelar</button>
+                <button onclick="guardarNuevaClave()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold text-sm hover:bg-blue-700">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // --- CONFIGURACIÓN GLOBAL ---
+    const sucursalId = localStorage.getItem('anda_sucursal_id');
+    let currentUser = null;
+    let currentTicketId = null;
+    let socket = null;
+    let timerInterval = null;
+    let secondsElapsed = 0;
+
+    // Validación de seguridad inicial
+    if(!sucursalId) window.location.href = '/';
+
+    // --- 1. INICIO DEL SISTEMA (EJECUTADO AL CARGAR) ---
+    (async function initSystem() {
+        // Ocultar todo para evitar parpadeos visuales
+        document.getElementById('loginView').classList.add('hidden');
+        document.getElementById('dashboardView').classList.add('hidden');
+        
+        // Cargar nombre de sucursal
+        try {
+            const res = await fetch(`/api/sucursales/${sucursalId}`);
+            const data = await res.json();
+            document.getElementById('sucursalDisplay').textContent = data.nombre;
+        } catch(e) {}
+
+        // Verificar si hay sesión local
+        const storedUser = localStorage.getItem('anda_session_ventanilla');
+        
+        if (storedUser) {
+            currentUser = JSON.parse(storedUser);
+            // SI HAY USUARIO, INTENTAMOS RESTAURAR SU ESTADO REAL
+            await restaurarSesion();
+        } else {
+            // SI NO HAY USUARIO, MOSTRAR LOGIN
+            document.getElementById('loginView').classList.remove('hidden');
+        }
+    })();
+
+    // --- 2. LÓGICA DE RESTAURACIÓN DE SESIÓN ---
+    async function restaurarSesion() {
+        // Mostrar info de usuario
+        document.getElementById('userInfo').classList.remove('hidden');
+        document.getElementById('userNameDisplay').textContent = currentUser.nombre;
+        
+        // Conectar Socket
+        if (!socket) {
+            socket = io();
+            socket.emit('unirse_sucursal', sucursalId);
+        }
+        
+        // Cargar Base de Conocimiento (AQUÍ ESTABA EL ERROR ANTES)
+        cargarGuiasVentanilla();
+
+        try {
+            // CONSULTA VITAL A LA BD: ¿Tengo algo pendiente?
+            const res = await fetch(`/api/tickets/activo/${currentUser._id}`);
+            const data = await res.json();
+
+            // Preparar UI
+            document.getElementById('dashboardView').classList.remove('hidden');
+            document.getElementById('dashboardView').classList.add('grid');
+
+            if (data.success && data.ticket) {
+                // -> TIENE TICKET PENDIENTE: Restaurar con tiempo correcto
+                console.log("Recuperando ticket:", data.ticket.codigo);
+                
+                // CÁLCULO DE TIEMPO TRANSCURRIDO (CORREGIDO PARA EVITAR NaN)
+                const fechaBase = data.ticket.actualizadoEn || data.ticket.creadoEn;
+                const inicio = new Date(fechaBase).getTime();
+                const ahora = new Date().getTime();
+                
+                let diffSegundos = 0;
+                if (!isNaN(inicio)) {
+                    diffSegundos = Math.floor((ahora - inicio) / 1000);
+                }
+                
+                if (diffSegundos < 0) diffSegundos = 0;
+
+                startSessionUI(data.ticket, diffSegundos);
+            } else {
+                // -> ESTÁ LIBRE
+                mostrarEstadoLibre();
+            }
+        } catch (error) {
+            console.error("Error recuperando estado:", error);
+            mostrarEstadoLibre(); 
+        }
+    }
+
+    // --- 3. GESTIÓN DE GUÍAS / AYUDA (RESTAURADO) ---
+    function cargarGuiasVentanilla() {
+        fetch('/api/guias')
+            .then(res => res.json())
+            .then(guias => {
+                const container = document.getElementById('knowledgeList');
+                
+                if(guias.length === 0) {
+                    container.innerHTML = '<div class="text-center p-4"><p class="text-xs text-gray-400">Sin guías publicadas.</p></div>';
+                    return;
+                }
+
+                // Generamos las tarjetas con estilo completo
+                container.innerHTML = guias.map(g => `
+                    <div onclick="abrirPopupGuia('${escapeHtml(g.titulo)}', '${escapeHtml(g.contenido)}')" 
+                         class="bg-white p-4 rounded-xl border border-blue-100 shadow-sm cursor-pointer hover:shadow-md hover:border-blue-400 hover:-translate-x-1 transition-all group select-none relative overflow-hidden mb-3">
+                        
+                        <div class="absolute right-0 top-0 w-1 h-full bg-blue-400 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        
+                        <div class="flex justify-between items-center mb-1">
+                            <h4 class="font-bold text-blue-800 text-sm leading-tight group-hover:text-blue-600">${g.titulo}</h4>
+                            <span class="text-xs text-blue-300">↗</span>
+                        </div>
+                        
+                        <p class="text-[10px] text-gray-400 line-clamp-2">${g.contenido.substring(0, 80)}...</p>
+                    </div>
+                `).join('');
+            });
+    }
+
+    function abrirPopupGuia(titulo, contenido) {
+        document.getElementById('popupTitulo').textContent = titulo;
+        document.getElementById('popupContenido').textContent = contenido;
+        document.getElementById('modalLeerGuia').classList.remove('hidden');
+    }
+
+    // --- 4. ACCIONES DE USUARIO ---
+    async function login(){
+        const u = document.getElementById('loginUser').value;
+        const p = document.getElementById('loginPass').value;
+        if(!u || !p) return alert("Credenciales incompletas");
+
+        try {
+            const res = await fetch('/api/usuarios/login', {
+                method:'POST', 
+                headers:{'Content-Type':'application/json'}, 
+                body:JSON.stringify({ username: u, password: p, sucursalId })
+            });
+            const d = await res.json();
+            
+            if(d.success){ 
+                if(d.user.rol === 'jefe_sucursal') {
+                    sessionStorage.setItem('anda_user', JSON.stringify(d.user));
+                    window.location.href = '/jefatura.html';
+                } else {
+                    currentUser = d.user; 
+                    localStorage.setItem('anda_session_ventanilla', JSON.stringify(d.user));
+                    window.location.reload(); 
+                }
+            } else {
+                alert(d.msg);
+            }
+        } catch(e) { alert("Error de conexión"); }
+    }
+
+    function logout(){ 
+        localStorage.removeItem('anda_session_ventanilla');
+        window.location.reload(); 
+    }
+
+    // --- 5. GESTIÓN DE TICKETS ---
+    async function llamarSiguiente() {
+        const btn = document.querySelector('button[onclick="llamarSiguiente()"]');
+        btn.disabled = true; 
+        btn.innerHTML = "⏳ Verificando...";
+        
+        try {
+            const res = await fetch('/api/tickets/llamar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ sucursalId, usuarioId: currentUser._id, ventanilla: currentUser.numeroVentanilla })
+            });
+            const data = await res.json();
+            
+            if(data.success) {
+                if(data.restored) {
+                    // Restauración desde backend
+                    const fechaBase = data.ticket.actualizadoEn || data.ticket.creadoEn;
+                    const inicio = new Date(fechaBase).getTime();
+                    let diff = Math.floor((new Date().getTime() - inicio) / 1000);
+                    if(diff < 0) diff = 0;
+                    startSessionUI(data.ticket, diff);
+                } else {
+                    // Nuevo ticket
+                    startSessionUI(data.ticket, 0);
+                }
+            } else {
+                alert(data.msg);
+            }
+        } catch(e) { console.error(e); }
+        
+        btn.disabled = false; 
+        btn.innerHTML = "🔔 LLAMAR SIGUIENTE";
+    }
+
+    async function finalizarAtencion() {
+        if(!confirm("¿Finalizar atención?")) return;
+        const notas = document.getElementById('notasInput').value;
+        try {
+            const res = await fetch('/api/tickets/finalizar', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ticketId: currentTicketId, notas, tiempoTotal: secondsElapsed })
+            });
+            if(res.ok) mostrarEstadoLibre();
+        } catch(e) { alert("Error de conexión"); }
+    }
+
+    async function volverALlamar() {
+        const btn = document.querySelector('button[onclick="volverALlamar()"]');
+        btn.disabled = true; btn.classList.add('opacity-50');
+
+        await fetch('/api/tickets/volver-llamar', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ sucursalId, usuarioId: currentUser._id })
+        });
+
+        if(timerInterval) clearInterval(timerInterval);
+        const display = document.getElementById('timerDisplay');
+        const savedTime = display.textContent;
+        display.textContent = "LLEGANDO...";
+        display.classList.add('blink');
+        
+        setTimeout(() => {
+            display.classList.remove('blink');
+            display.textContent = savedTime;
+            startTimer(); 
+        }, 5000);
+        setTimeout(() => { btn.disabled = false; btn.classList.remove('opacity-50'); }, 1000);
+    }
+
+    // --- 6. INTERFAZ Y CRONÓMETRO ---
+    function startSessionUI(ticket, segundosIniciales) {
+        currentTicketId = ticket._id;
+        
+        document.getElementById('stateWaiting').classList.add('hidden');
+        document.getElementById('stateWaiting').classList.remove('flex');
+        document.getElementById('stateActive').classList.remove('hidden');
+        document.getElementById('stateActive').classList.add('flex');
+        document.getElementById('workspacePanel').classList.remove('hidden');
+        document.getElementById('workspacePanel').classList.add('flex');
+
+        document.getElementById('currentTicket').textContent = ticket.codigo;
+        document.getElementById('currentTramite').textContent = ticket.tipoTramite;
+        document.getElementById('clientDuiDisplay').textContent = `DUI: ${ticket.documentoCliente || '---'}`;
+        
+        if(ticket.esPrioritario) {
+            document.getElementById('prioBadge').classList.remove('hidden');
+            document.getElementById('prioBadge').textContent = `★ ${ticket.condicionesEspeciales.join(', ')}`;
+        } else {
+            document.getElementById('prioBadge').classList.add('hidden');
+        }
+
+        secondsElapsed = segundosIniciales;
+        actualizarRelojVisual();
+        
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            secondsElapsed++;
+            actualizarRelojVisual();
+        }, 1000);
+        
+        // Animación solo si es ticket nuevo (< 5 seg)
+        if(segundosIniciales < 5) {
+            const tDisplay = document.getElementById('timerDisplay');
+            tDisplay.textContent = "LLEGANDO..."; 
+            tDisplay.classList.add('blink');
+            setTimeout(() => { 
+                tDisplay.classList.remove('blink'); 
+                actualizarRelojVisual(); 
+            }, 4000);
+        }
+    }
+
+    function mostrarEstadoLibre() {
+        if (timerInterval) clearInterval(timerInterval);
+        currentTicketId = null;
+        document.getElementById('stateActive').classList.add('hidden');
+        document.getElementById('stateActive').classList.remove('flex');
+        document.getElementById('workspacePanel').classList.add('hidden');
+        document.getElementById('workspacePanel').classList.remove('flex');
+        document.getElementById('stateWaiting').classList.remove('hidden');
+        document.getElementById('stateWaiting').classList.add('flex');
+        document.getElementById('notasInput').value = '';
+    }
+
+    function startTimer() {
+        if(timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            secondsElapsed++;
+            actualizarRelojVisual();
+        }, 1000);
+    }
+
+    function actualizarRelojVisual() {
+        const min = Math.floor(secondsElapsed / 60).toString().padStart(2, '0');
+        const sec = (secondsElapsed % 60).toString().padStart(2, '0');
+        const display = document.getElementById('timerDisplay');
+        if(!display.classList.contains('blink')) {
+            if (isNaN(secondsElapsed)) display.textContent = "00:00";
+            else display.textContent = `${min}:${sec}`;
+        }
+    }
+
+    // --- 7. UTILIDADES ---
+    function mostrarDerivacion() { document.getElementById('modalDerivar').classList.remove('hidden'); }
+    async function confirmarDerivacion() {
+        const motivo = document.getElementById('motivoDerivacion').value;
+        if(!motivo) return alert("Ingrese motivo");
+        const res = await fetch('/api/tickets/derivar', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ ticketId: currentTicketId, motivo, usuarioId: currentUser._id })
+        });
+        if(res.ok) {
+            alert("Derivado a Jefatura");
+            document.getElementById('modalDerivar').classList.add('hidden');
+            mostrarEstadoLibre();
+        }
+    }
+
+    function escapeHtml(text) { if (!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/\n/g, "\\n"); }
+    function abrirModalClave() { document.getElementById('modalClave').classList.remove('hidden'); }
+    async function guardarNuevaClave() {
+        const actual = document.getElementById('passActual').value;
+        const nueva = document.getElementById('passNueva').value;
+        if(!actual || !nueva) return alert("Complete los campos");
+        fetch('/api/usuarios/cambiar-password', {
+            method: 'POST', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ usuarioId: currentUser._id, actual, nueva })
+        }).then(r=>r.json()).then(d=>{
+            if(d.success){ alert("OK"); document.getElementById('modalClave').classList.add('hidden'); }
+            else alert(d.msg);
+        });
+    }
+</script>
+</body>
+</html>
