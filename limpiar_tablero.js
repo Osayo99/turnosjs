@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const Ticket = require('./src/models/Ticket'); // Asegúrate que la ruta sea correcta
+const Ticket = require('./src/models/Ticket');
 require('dotenv').config();
 
 const limpiar = async () => {
@@ -7,15 +7,12 @@ const limpiar = async () => {
         // Conexión
         await mongoose.connect('mongodb://127.0.0.1:27017/anda_turnos');
         console.log('🧹 Conectado a la Base de Datos...');
-
-        // 1. Buscar tickets "pegados" (Cualquiera que NO esté finalizado)
         const filtro = { estado: { $ne: 'finalizado' } };
         
         const ticketsSucios = await Ticket.find(filtro);
         console.log(`🔍 Se encontraron ${ticketsSucios.length} tickets activos/pegados.`);
 
         if (ticketsSucios.length > 0) {
-            // 2. Actualizar masivamente
             const resultado = await Ticket.updateMany(
                 filtro, 
                 { 

@@ -25,7 +25,7 @@ const importarDatos = async () => {
         // 2. Crear un Usuario Ventanilla
         await Usuario.create({
             username: 'j.lopez',
-            password: '123', // En prod usaríamos bcrypt
+            password: '123',
             nombre: 'Juan Lopez',
             rol: 'ventanilla',
             sucursal: agencia._id,

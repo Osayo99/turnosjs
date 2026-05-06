@@ -139,12 +139,9 @@
             } catch(e) {}
 
             actualizarCola();
-            
             socket = io();
             socket.emit('unirse_sucursal', sucursalId);
             socket.on('cola_actualizada', actualizarCola);
-            
-            // ESCUCHAR LLAMADA Y MOSTRAR DATOS LIMPIOS
             socket.on('ticket_llamado', (t) => {
                 mostrarLlamada(t);
                 actualizarCola();
@@ -182,28 +179,17 @@
             } catch(e) {}
         }
 
-        // --- FUNCIÓN CORREGIDA PARA MOSTRAR NÚMERO ---
         function mostrarLlamada(ticket) {
             const overlay = document.getElementById('callOverlay');
             document.getElementById('mainTicket').textContent = ticket.codigo;
-            
-            // Lógica simple: Si hay número, mostrar "Ventanilla X", si no "??"
-            // Ya no buscamos "JEFATURA", confiamos en el backend
             const numVent = ticket.ventanillaNumero || '?';
             const ventanillaTexto = `Ventanilla ${numVent}`;
-                
             document.getElementById('mainVentanilla').textContent = ventanillaTexto;
-            
-            // Actualizar miniatura de último llamado
             document.getElementById('lastTicket').textContent = ticket.codigo;
             document.getElementById('lastVent').textContent = `V.${numVent}`;
-            
             overlay.classList.remove('hidden');
             overlay.classList.add('flex');
-            
-            // Voz
             setTimeout(() => hablar(ticket.codigo, ventanillaTexto), 500);
-            
             setTimeout(() => { 
                 overlay.classList.add('hidden'); 
                 overlay.classList.remove('flex'); 

@@ -8,7 +8,6 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap');
         body { font-family: 'Outfit', sans-serif; }
-        /* Ajuste para inputs date en fondo claro */
         input[type="date"] { cursor: pointer; }
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #f1f1f1; }
@@ -204,11 +203,9 @@
         const currentUser = JSON.parse(sessionStorage.getItem('anda_user'));
         let socket = null, currentTicketId = null, timerInterval = null;
         
-        // Validación de acceso
         if(!sucursalId || !currentUser || currentUser.rol !== 'jefe_sucursal') window.location.href = '/ventanilla.html';
         document.getElementById('userName').textContent = currentUser.nombre;
         
-        // Inicialización
         (async () => {
             try {
                 const res = await fetch(`/api/sucursales/${sucursalId}`);
@@ -220,17 +217,14 @@
             } catch(e) { console.error("Error init:", e); }
         })();
 
-        // Socket.io
         socket = io(); 
         socket.emit('unirse_sucursal', sucursalId);
         ['cola_actualizada', 'ticket_llamado', 'ticket_finalizado'].forEach(evt => socket.on(evt, cargarDatosDashboard));
         
-        // Timer Global (Corre cada segundo)
         setInterval(actualizarTimersAgentes, 1000);
 
-        // --- DASHBOARD ---
         async function cargarDatosDashboard() {
-            if(currentTicketId) return; // No actualizar si el jefe está atendiendo
+            if(currentTicketId) return;
             try {
                 const res = await fetch(`/api/tickets/jefatura/${sucursalId}`);
                 const data = await res.json();
@@ -247,7 +241,6 @@
             } catch(e) { console.error("Error dashboard", e); }
         }
 
-        // --- RENDERIZADO DE VENTANILLAS ---
         function renderVentanillas(agentes) { 
             const grid = document.getElementById('gridVentanillas');
             
@@ -293,7 +286,6 @@
             }).join(''); 
         }
 
-        // --- LÓGICA DEL RELOJ ---
         function actualizarTimersAgentes() { 
             const now = Date.now(); 
             document.querySelectorAll('.agent-timer').forEach(el => { 
@@ -323,7 +315,6 @@
             }); 
         }
 
-        // RESTO DE FUNCIONES VISUALES
         function renderChart(d) { document.getElementById('chartTipos').innerHTML = !d.length ? '<p class="text-xs text-gray-400 italic">Sin datos.</p>' : d.map(x=>`<div class="flex items-center gap-2 text-xs"><span class="w-20 font-bold text-gray-600 truncate">${x._id}</span><div class="flex-grow bg-gray-100 rounded-full h-4 overflow-hidden"><div class="bg-blue-500 h-full rounded-full" style="width: ${(x.count/Math.max(...d.map(v=>v.count)))*100}%"></div></div><span class="font-bold text-blue-900 w-6 text-right">${x.count}</span></div>`).join(''); }
         function renderColaMonitor(c) { document.getElementById('listaColaMonitor').innerHTML = c.length ? c.map(t=>`<div class="flex justify-between border-b border-gray-700 pb-1 mb-1"><span class="font-bold text-lg">${t.codigo}</span><span class="text-[10px] text-gray-400">${t.tipoTramite}</span></div>`).join('') : '<p class="text-gray-500 text-xs italic">Vacío.</p>'; }
         function renderDerivados(l) { document.getElementById('listaDerivados').innerHTML = !l.length ? `<div class="text-center p-6 text-gray-400 bg-white rounded-xl border border-dashed text-sm">Sin pendientes.</div>` : l.map(t=>`<div class="bg-white p-4 rounded-xl shadow-sm border-l-4 border-purple-500 flex justify-between items-center"><div><div class="flex items-center gap-2 mb-1"><span class="text-xl font-black text-blue-900">${t.codigo}</span><span class="bg-blue-50 text-blue-600 text-[10px] font-bold px-2 rounded">${t.tipoTramite}</span></div><p class="text-xs text-gray-600"><b>Motivo:</b> ${t.motivoDerivacion}</p></div><button onclick="iniciarAtencionJefe('${t._id}', '${t.codigo}', '${t.tipoTramite}', '${t.documentoCliente||''}')" class="bg-purple-600 text-white px-4 py-2 rounded-lg font-bold text-xs hover:bg-purple-700">ATENDER</button></div>`).join(''); }
@@ -339,8 +330,6 @@
             } catch(e){}
         }
 
-        // --- GESTIÓN DE PERSONAL CON PRIORIDADES ---
-        // --- GESTIÓN DE PERSONAL CON PRIORIDADES ---
         async function cargarPersonal() {
             try {
                 const res = await fetch(`/api/usuarios/sucursal/${sucursalId}`);
@@ -359,13 +348,10 @@
                     }
 
                     const uData = JSON.stringify(u).replace(/"/g, '&quot;');
-                    
-                    // Ocultamos el botón de eliminar para el propio Jefe que está viendo la pantalla (no puede borrarse a sí mismo)
                     const botonEliminar = (u._id !== currentUser._id) 
                         ? `<button onclick="eliminarEjecutivo('${u._id}', '${u.nombre}')" class="text-red-400 hover:text-red-600 text-xs font-bold bg-red-50 hover:bg-red-100 px-2 py-1 rounded flex-shrink-0" title="Eliminar Usuario">🗑️</button>` 
                         : `<span class="w-7 inline-block flex-shrink-0"></span>`;
 
-                    // FIX VISUAL: Se agregó 'align-middle' a los <td> y se envolvieron los elementos 'flex' en un <div> interno
                     return `<tr class="hover:bg-gray-50 transition-colors">
                         <td class="p-3 font-medium text-gray-800 align-middle">${u.nombre}</td>
                         <td class="p-3 text-gray-500 font-mono text-xs align-middle">${u.username}</td>
@@ -388,8 +374,6 @@
 
         function abrirModalEditar(u) { 
             document.getElementById('modalEditarUsuario').classList.remove('hidden'); 
-            
-            // Llenar nuevos inputs
             document.getElementById('editUserId').value = u._id; 
             document.getElementById('editUserNombre').value = u.nombre; 
             document.getElementById('editUserUsername').value = u.username; 
@@ -476,13 +460,11 @@
             
             if(!f) return alert("⚠️ Por favor, seleccione un archivo de video primero.");
 
-            // Elementos de la interfaz
             const btn = document.getElementById('btnSubirVideo');
             const progressContainer = document.getElementById('progressContainer');
             const progressBar = document.getElementById('progressBar');
             const progressText = document.getElementById('progressText');
 
-            // Preparar el botón y mostrar la barra
             btn.disabled = true;
             btn.classList.add('opacity-50', 'cursor-not-allowed');
             btn.textContent = "SUBIENDO...";
@@ -491,15 +473,10 @@
             progressBar.style.width = '0%';
             progressText.textContent = '0%';
 
-            // Preparar los datos
             const fd = new FormData(); 
             fd.append('videoFile', f); 
             fd.append('sucursalId', sucursalId); 
-
-            // Usamos XMLHttpRequest para poder rastrear el progreso
             const xhr = new XMLHttpRequest();
-
-            // Escuchar el progreso de la subida
             xhr.upload.addEventListener("progress", (event) => {
                 if (event.lengthComputable) {
                     const percentComplete = Math.round((event.loaded / event.total) * 100);
@@ -507,10 +484,7 @@
                     progressText.textContent = percentComplete + '%';
                 }
             });
-
-            // Cuando termine la petición (sea éxito o error)
             xhr.addEventListener("load", () => {
-                // Restaurar el botón
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
                 btn.textContent = "SUBIR VIDEO";
@@ -520,8 +494,7 @@
                         const data = JSON.parse(xhr.responseText);
                         if(data.success) {
                             alert("✅ Video subido y configurado correctamente.");
-                            input.value = ""; // Limpiar el input file
-                            // Ocultar barra
+                            input.value = "";
                             setTimeout(() => {
                                 progressContainer.classList.add('hidden');
                                 progressText.classList.add('hidden');
@@ -536,16 +509,12 @@
                     alert("❌ Error del servidor al intentar subir el archivo.");
                 }
             });
-
-            // Si hay un error de red (se cae el internet, servidor apagado)
             xhr.addEventListener("error", () => {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
                 btn.textContent = "SUBIR VIDEO";
                 alert("❌ Error de conexión al servidor.");
             });
-
-            // Enviar la petición
             xhr.open("POST", "/api/upload-video", true);
             xhr.send(fd);
         }

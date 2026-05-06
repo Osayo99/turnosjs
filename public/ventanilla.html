@@ -167,7 +167,7 @@
     </div>
 
 <script>
-    // --- CONFIGURACIÓN GLOBAL ---
+
     const sucursalId = localStorage.getItem('anda_sucursal_id');
     let currentUser = null;
     let currentTicketId = null;
@@ -175,78 +175,61 @@
     let timerInterval = null;
     let secondsElapsed = 0;
 
-    // Validación de seguridad inicial
+
     if(!sucursalId) window.location.href = '/';
 
-    // --- 1. INICIO DEL SISTEMA (EJECUTADO AL CARGAR) ---
+
     (async function initSystem() {
-        // Ocultar todo para evitar parpadeos visuales
+
         document.getElementById('loginView').classList.add('hidden');
         document.getElementById('dashboardView').classList.add('hidden');
-        
-        // Cargar nombre de sucursal
+
         try {
             const res = await fetch(`/api/sucursales/${sucursalId}`);
             const data = await res.json();
             document.getElementById('sucursalDisplay').textContent = data.nombre;
         } catch(e) {}
 
-        // Verificar si hay sesión local
         const storedUser = localStorage.getItem('anda_session_ventanilla');
         
         if (storedUser) {
             currentUser = JSON.parse(storedUser);
-            // SI HAY USUARIO, INTENTAMOS RESTAURAR SU ESTADO REAL
             await restaurarSesion();
         } else {
-            // SI NO HAY USUARIO, MOSTRAR LOGIN
             document.getElementById('loginView').classList.remove('hidden');
         }
     })();
-
-    // --- 2. LÓGICA DE RESTAURACIÓN DE SESIÓN ---
+-
     async function restaurarSesion() {
-        // Mostrar info de usuario
+
         document.getElementById('userInfo').classList.remove('hidden');
         document.getElementById('userNameDisplay').textContent = currentUser.nombre;
-        
-        // Conectar Socket
+
         if (!socket) {
             socket = io();
             socket.emit('unirse_sucursal', sucursalId);
         }
-        
-        // Cargar Base de Conocimiento (AQUÍ ESTABA EL ERROR ANTES)
+
         cargarGuiasVentanilla();
 
         try {
-            // CONSULTA VITAL A LA BD: ¿Tengo algo pendiente?
             const res = await fetch(`/api/tickets/activo/${currentUser._id}`);
             const data = await res.json();
-
-            // Preparar UI
             document.getElementById('dashboardView').classList.remove('hidden');
             document.getElementById('dashboardView').classList.add('grid');
 
             if (data.success && data.ticket) {
-                // -> TIENE TICKET PENDIENTE: Restaurar con tiempo correcto
                 console.log("Recuperando ticket:", data.ticket.codigo);
-                
-                // CÁLCULO DE TIEMPO TRANSCURRIDO (CORREGIDO PARA EVITAR NaN)
                 const fechaBase = data.ticket.actualizadoEn || data.ticket.creadoEn;
                 const inicio = new Date(fechaBase).getTime();
                 const ahora = new Date().getTime();
-                
                 let diffSegundos = 0;
                 if (!isNaN(inicio)) {
                     diffSegundos = Math.floor((ahora - inicio) / 1000);
                 }
-                
                 if (diffSegundos < 0) diffSegundos = 0;
-
                 startSessionUI(data.ticket, diffSegundos);
             } else {
-                // -> ESTÁ LIBRE
                 mostrarEstadoLibre();
             }
         } catch (error) {
@@ -254,8 +237,6 @@
             mostrarEstadoLibre(); 
         }
     }
-
-    // --- 3. GESTIÓN DE GUÍAS / AYUDA (RESTAURADO) ---
     function cargarGuiasVentanilla() {
         fetch('/api/guias')
             .then(res => res.json())
@@ -266,8 +247,6 @@
                     container.innerHTML = '<div class="text-center p-4"><p class="text-xs text-gray-400">Sin guías publicadas.</p></div>';
                     return;
                 }
-
-                // Generamos las tarjetas con estilo completo
                 container.innerHTML = guias.map(g => `
                     <div onclick="abrirPopupGuia('${escapeHtml(g.titulo)}', '${escapeHtml(g.contenido)}')" 
                          class="bg-white p-4 rounded-xl border border-blue-100 shadow-sm cursor-pointer hover:shadow-md hover:border-blue-400 hover:-translate-x-1 transition-all group select-none relative overflow-hidden mb-3">
@@ -290,8 +269,6 @@
         document.getElementById('popupContenido').textContent = contenido;
         document.getElementById('modalLeerGuia').classList.remove('hidden');
     }
-
-    // --- 4. ACCIONES DE USUARIO ---
     async function login(){
         const u = document.getElementById('loginUser').value;
         const p = document.getElementById('loginPass').value;
@@ -325,7 +302,6 @@
         window.location.reload(); 
     }
 
-    // --- 5. GESTIÓN DE TICKETS ---
     async function llamarSiguiente() {
         const btn = document.querySelector('button[onclick="llamarSiguiente()"]');
         btn.disabled = true; 
@@ -341,14 +317,12 @@
             
             if(data.success) {
                 if(data.restored) {
-                    // Restauración desde backend
                     const fechaBase = data.ticket.actualizadoEn || data.ticket.creadoEn;
                     const inicio = new Date(fechaBase).getTime();
                     let diff = Math.floor((new Date().getTime() - inicio) / 1000);
                     if(diff < 0) diff = 0;
                     startSessionUI(data.ticket, diff);
                 } else {
-                    // Nuevo ticket
                     startSessionUI(data.ticket, 0);
                 }
             } else {
@@ -396,7 +370,6 @@
         setTimeout(() => { btn.disabled = false; btn.classList.remove('opacity-50'); }, 1000);
     }
 
-    // --- 6. INTERFAZ Y CRONÓMETRO ---
     function startSessionUI(ticket, segundosIniciales) {
         currentTicketId = ticket._id;
         
@@ -427,7 +400,6 @@
             actualizarRelojVisual();
         }, 1000);
         
-        // Animación solo si es ticket nuevo (< 5 seg)
         if(segundosIniciales < 5) {
             const tDisplay = document.getElementById('timerDisplay');
             tDisplay.textContent = "LLEGANDO..."; 
@@ -469,7 +441,6 @@
         }
     }
 
-    // --- 7. UTILIDADES ---
     function mostrarDerivacion() { document.getElementById('modalDerivar').classList.remove('hidden'); }
     async function confirmarDerivacion() {
         const motivo = document.getElementById('motivoDerivacion').value;

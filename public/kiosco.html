@@ -10,8 +10,6 @@
         body { font-family: 'Outfit', sans-serif; }
         
         .btn-active:active { transform: scale(0.98); }
-
-        /* Estilos de Prioridad Simplificada */
         .prio-btn { transition: all 0.2s; border: 2px solid #e5e7eb; }
         .prio-selected {
             background-color: #eff6ff !important; 
@@ -19,11 +17,8 @@
             color: #1e3a8a !important;
             box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.1);
         }
-        /* Icono de check para prioridad */
         .check-icon { display: none; }
         .prio-selected .check-icon { display: inline-block; }
-
-        /* --- REGLAS DE IMPRESIÓN --- */
         @media print {
             body > * { display: none !important; }
             
@@ -138,13 +133,9 @@
         if (!sucursalId) window.location.href = '/';
 
         setInterval(() => document.getElementById('reloj').textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}), 1000);
-
-        // --- REFERENCIAS DOM ---
         const inputDoc = document.getElementById('documentoInput');
         const selectDoc = document.getElementById('docType');
         const hintDoc = document.getElementById('docHint');
-
-        // Lógica de Máscaras
         function cambiarMascara() {
             inputDoc.value = ''; 
             const tipo = selectDoc.value;
@@ -182,8 +173,6 @@
                 e.target.value = formatted;
             }
         });
-
-        // Lógica de Prioridad
         function setPrioridad(tipo) {
             const btnN = document.getElementById('btnNormal');
             const btnP = document.getElementById('btnPrioridad');
@@ -198,8 +187,6 @@
                 btnP.classList.remove('prio-selected');
             }
         }
-
-        // --- GENERAR TICKET ---
         async function generarTicket(tipoTramite, btnElement) {
             const documento = inputDoc.value;
             
@@ -231,11 +218,8 @@
 
                 if (data.success) {
                     imprimirTicket(data.ticket);
-                    
-                    // --- CORRECCIÓN AQUÍ: LIMPIAR FORMULARIO ---
-                    inputDoc.value = ''; // Usamos la variable correcta 'inputDoc'
-                    setPrioridad('normal'); // Volver a prioridad normal
-                    // -------------------------------------------
+                    inputDoc.value = '';
+                    setPrioridad('normal');
                 } else {
                     alert('Error: ' + data.msg);
                 }
