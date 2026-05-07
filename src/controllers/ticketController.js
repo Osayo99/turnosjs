@@ -3,25 +3,26 @@ const Sucursal = require('../models/Sucursal');
 const Usuario = require('../models/Usuario');
 const mongoose = require('mongoose');
 
+// Controlador para la gestión de tickets (Ventanilla, Jefatura y Auditoría de tickets históricos)
+
 // CREAR TICKET (Kiosco)
 exports.crearTicket = async (req, res) => {
     try {
         const { sucursalId, tipoTramite, documento, condiciones } = req.body;
 
         const sucursal = await Sucursal.findById(sucursalId);
-        if (!sucursal) return res.status(404).json({ msg: 'Sucursal no encontrada' });
+        if (!sucursal) return res.status(404).json({ success: false, msg: 'Sucursal no encontrada' });
 
         const mapaLetras = { 'PAGOS': 'G', 'CONSULTAS': 'C', 'RECLAMOS': 'R', 'NUEVOS': 'N' };
         const letra = mapaLetras[tipoTramite] || 'A';
 
-        // Consecutivo Diario
         const startToday = new Date();
         startToday.setHours(0,0,0,0);
         
         const ultimoTicket = await Ticket.findOne({ 
             sucursal: sucursalId,
-            creadoEn: { $gte: startToday },
-            letra: letra
+            letra: letra,
+            creadoEn: { $gte: startToday }
         }).sort({ creadoEn: -1 });
 
         const nuevoNumero = ultimoTicket ? ultimoTicket.numero + 1 : 1;
@@ -41,40 +42,36 @@ exports.crearTicket = async (req, res) => {
 
         await nuevoTicket.save();
 
-        // --- CORRECCIÓN: USAR 'io' ---
         const io = req.app.get('io');
-        io.to(sucursalId).emit('cola_actualizada', nuevoTicket);
+        if (io) io.to(sucursalId).emit('cola_actualizada', nuevoTicket);
 
         res.status(201).json({ success: true, ticket: nuevoTicket });
 
-    } catch (error) { res.status(500).send('Error servidor'); }
+    } catch (error) { 
+        console.error(error);
+        res.status(500).json({ success: false, msg: 'Error interno al crear el ticket' }); 
+    }
 };
 
-// LLAMAR SIGUIENTE (INTELIGENTE CON PRIORIDADES DINÁMICAS)
+// LLAMAR SIGUIENTE
 exports.llamarTicket = async (req, res) => {
     const { usuarioId, sucursalId, ventanilla } = req.body;
 
     try {
-        // 1. OBTENER USUARIO Y SUS SKILLS
         const usuario = await Usuario.findById(usuarioId).lean();
-        if (!usuario) return res.status(404).json({ success: false, msg: 'Usuario no encontrado' });
+        if (!usuario) {
+            return res.status(404).json({ success: false, msg: 'Usuario no encontrado' });
+        }
 
-        // CANDADO DE SEGURIDAD (Si ya tiene uno activo, devolverlo)
         const ticketActivo = await Ticket.findOne({
             ventanillaAtendio: usuarioId,
             estado: 'atendiendo'
         });
 
         if (ticketActivo) {
-            return res.json({ 
-                success: true, 
-                ticket: ticketActivo,
-                msg: 'Sesión restaurada.',
-                restored: true 
-            });
+            return res.json({ success: true, ticket: ticketActivo, msg: 'Sesión restaurada.', restored: true });
         }
 
-        // 2. CONSTRUIR ESTRATEGIA DE BÚSQUEDA
         if (!usuario.skills || usuario.skills.length === 0) {
             return res.json({ success: false, msg: 'No tienes habilidades asignadas para atender tickets.' });
         }
@@ -85,49 +82,27 @@ exports.llamarTicket = async (req, res) => {
         let siguienteTicket = null;
         const now = new Date();
 
-        // 3. BUSCAR TICKETS NIVEL POR NIVEL
         for (const nivelPrioridad of prioridadesUnicas) {
-            
-            const tiposDeEsteNivel = skillsOrdenadas
-                .filter(s => s.prioridad === nivelPrioridad)
-                .map(s => s.tipo);
-
-            // Buscamos y actualizamos atómicamente
+            const tiposDeEsteNivel = skillsOrdenadas.filter(s => s.prioridad === nivelPrioridad).map(s => s.tipo);
             siguienteTicket = await Ticket.findOneAndUpdate(
-                { 
-                    sucursal: sucursalId, 
-                    estado: 'pendiente',
-                    tipoTramite: { $in: tiposDeEsteNivel } 
-                },
-                { 
-                    estado: 'atendiendo',
-                    ventanillaAtendio: usuarioId,
-                    llamadoEn: now,      
-                    actualizadoEn: now,
-                    // GUARDAMOS EL NÚMERO DE VENTANILLA PARA EL MONITOR
-                    ventanillaNumero: ventanilla 
-                },
+                { sucursal: sucursalId, estado: 'pendiente', tipoTramite: { $in: tiposDeEsteNivel } },
+                { estado: 'atendiendo', ventanillaAtendio: usuarioId, llamadoEn: now, actualizadoEn: now, ventanillaNumero: ventanilla },
                 { sort: { esPrioritario: -1, creadoEn: 1 }, new: true } 
             );
 
-            if (siguienteTicket) {
-                break; 
-            }
+            if (siguienteTicket) break; 
         }
 
-        // 4. RESPUESTA FINAL
         if (!siguienteTicket) {
             return res.json({ success: false, msg: 'No hay tickets pendientes para tu perfil.' });
         }
 
-        // Actualizar estado del usuario a Ocupado
         await Usuario.findByIdAndUpdate(usuarioId, {
             estado: 'ocupado',
             ticket: siguienteTicket._id,
             numeroVentanilla: ventanilla
         });
 
-        // --- CORRECCIÓN: USAR 'io' Y ENVIAR AL SOCKET ---
         const io = req.app.get('io');
         if(io) {
             io.to(sucursalId).emit('ticket_llamado', siguienteTicket);
@@ -137,12 +112,12 @@ exports.llamarTicket = async (req, res) => {
         res.json({ success: true, ticket: siguienteTicket });
 
     } catch (error) {
-        console.error(error);
-        res.status(500).json({ success: false, msg: 'Error al llamar ticket' });
+        console.error("Error en llamarTicket:", error);
+        res.status(500).json({ success: false, msg: 'Error de concurrencia al llamar ticket' });
     }
 };
 
-// RE-LLAMAR (Ventanilla)
+// RE-LLAMAR
 exports.volverALlamar = async (req, res) => {
     try {
         const { sucursalId, usuarioId } = req.body;
@@ -154,35 +129,46 @@ exports.volverALlamar = async (req, res) => {
 
         if (!ticketActual) return res.status(404).json({ success: false, msg: 'No tienes ticket activo.' });
 
-        // --- CORRECCIÓN: USAR 'io' ---
         const io = req.app.get('io');
-        io.to(sucursalId).emit('ticket_llamado', ticketActual);
+        if (io) io.to(sucursalId).emit('ticket_llamado', ticketActual);
 
         res.json({ success: true, ticket: ticketActual });
-    } catch (error) { res.status(500).send('Error'); }
+    } catch (error) { 
+        console.error(error);
+        res.status(500).json({ success: false, msg: 'Error al volver a llamar' }); 
+    }
 };
 
-// FINALIZAR (Ventanilla)
+// FINALIZAR o LIBERAR USUARIO
 exports.finalizarTicket = async (req, res) => {
     try {
         const { ticketId, notas, tiempoTotal } = req.body;
+        
         const ticket = await Ticket.findByIdAndUpdate(ticketId, {
             estado: 'finalizado',
             finalizadoEn: new Date(),
             notasAtencion: notas,
             tiempoTotalAtencion: tiempoTotal
+        }, { new: true });
+        
+        if (!ticket) return res.status(404).json({ success: false, msg: 'Ticket no encontrado' });
+
+        await Usuario.findByIdAndUpdate(ticket.ventanillaAtendio, {
+            estado: 'disponible',
+            ticket: null
         });
         
-        // --- CORRECCIÓN: USAR 'io' ---
-        // Avisar a Jefatura para actualizar gráficas
         const io = req.app.get('io');
-        io.to(ticket.sucursal.toString()).emit('ticket_finalizado', { ticketId });
+        if (io) io.to(ticket.sucursal.toString()).emit('ticket_finalizado', { ticketId });
         
         res.json({ success: true });
-    } catch (e) { res.status(500).send('Error'); }
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ success: false, msg: 'Error al finalizar ticket' }); 
+    }
 };
 
-// DERIVAR (Ventanilla -> Jefe)
+// DERIVAR y/o LIBERAR USUARIO)
 exports.derivarTicket = async (req, res) => {
     try {
         const { ticketId, motivo, usuarioId } = req.body;
@@ -191,49 +177,56 @@ exports.derivarTicket = async (req, res) => {
             motivoDerivacion: motivo,
             derivadoPor: usuarioId,
             ventanillaAtendio: null 
+        }, { new: true });
+
+        if (!ticket) return res.status(404).json({ success: false, msg: 'Ticket no encontrado' });
+
+        await Usuario.findByIdAndUpdate(usuarioId, {
+            estado: 'disponible',
+            ticket: null
         });
 
-        // --- CORRECCIÓN: USAR 'io' ---
-        // Avisar a Jefatura que llegó uno nuevo
         const io = req.app.get('io');
-        io.to(ticket.sucursal.toString()).emit('cola_actualizada', {});
+        if (io) io.to(ticket.sucursal.toString()).emit('cola_actualizada', {});
 
         res.json({ success: true });
-    } catch (e) { res.status(500).send('Error'); }
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ success: false, msg: 'Error al derivar ticket' }); 
+    }
 };
 
-// OBTENER COLA (Monitor)
+// OBTENER COLA
 exports.obtenerCola = async (req, res) => {
     try {
         const { sucursalId } = req.params;
         const cola = await Ticket.find({ sucursal: sucursalId, estado: 'pendiente' })
             .sort({ esPrioritario: -1, creadoEn: 1 });
         res.json(cola);
-    } catch (e) { res.status(500).send('Error'); }
+    } catch (e) { 
+        console.error(e);
+        res.status(500).json({ success: false, msg: 'Error obteniendo la cola' }); 
+    }
 };
 
 // --- JEFATURA ---
 
-// INFO DASHBOARD JEFE
 exports.infoJefatura = async (req, res) => {
     try {
         const { sucursalId } = req.params;
         const startToday = new Date();
         startToday.setHours(0,0,0,0);
 
-        // 1. Estadísticas
         const total = await Ticket.countDocuments({ sucursal: sucursalId, creadoEn: { $gte: startToday } });
         const atendidos = await Ticket.countDocuments({ sucursal: sucursalId, estado: 'finalizado', creadoEn: { $gte: startToday } });
         const derivados = await Ticket.countDocuments({ sucursal: sucursalId, estado: 'derivado', creadoEn: { $gte: startToday } });
         const pendientes = await Ticket.countDocuments({ sucursal: sucursalId, estado: 'pendiente' });
 
-        // 2. Gráfica
         const conteoPorTipo = await Ticket.aggregate([
             { $match: { sucursal: new mongoose.Types.ObjectId(sucursalId), estado: 'finalizado', creadoEn: { $gte: startToday } } },
             { $group: { _id: "$tipoTramite", count: { $sum: 1 } } }
         ]);
 
-        // 3. MONITOR DE VENTANILLAS
         const ejecutivos = await Usuario.find({ 
             sucursal: sucursalId, 
             numeroVentanilla: { $gt: 0 } 
@@ -260,13 +253,12 @@ exports.infoJefatura = async (req, res) => {
 
         estadoVentanillas.sort((a, b) => a.numero - b.numero);
 
-        // 4. Colas
         const colaEspera = await Ticket.find({ sucursal: sucursalId, estado: 'pendiente' })
             .sort({ esPrioritario: -1, creadoEn: 1 }).limit(10);
 
         const colaDerivados = await Ticket.find({ sucursal: sucursalId, estado: 'derivado' })
             .populate('derivadoPor', 'nombre ventanillaNumero')
-            .sort({ modificadoEn: 1 });
+            .sort({ creadoEn: 1 });
 
         const historial = await Ticket.find({ sucursal: sucursalId, estado: 'finalizado', creadoEn: { $gte: startToday } })
             .populate('ventanillaAtendio', 'nombre')
@@ -283,17 +275,16 @@ exports.infoJefatura = async (req, res) => {
 
     } catch (e) { 
         console.error(e);
-        res.status(500).send('Error stats'); 
+        res.status(500).json({ success: false, msg: 'Error obteniendo métricas' }); 
     }
 };
 
-// JEFE LLAMA TICKET
 exports.atenderDerivado = async (req, res) => {
     try {
         const { ticketId, usuarioId } = req.body;
         
         const jefe = await Usuario.findById(usuarioId);
-        if (!jefe) return res.status(404).json({ msg: 'Usuario no encontrado' });
+        if (!jefe) return res.status(404).json({ success: false, msg: 'Usuario no encontrado' });
 
         const ticket = await Ticket.findByIdAndUpdate(ticketId, {
             estado: 'atendiendo',
@@ -306,18 +297,16 @@ exports.atenderDerivado = async (req, res) => {
             ventanillaNumero: jefe.numeroVentanilla || 0 
         };
 
-        // --- CORRECCIÓN: USAR 'io' ---
         const io = req.app.get('io');
-        io.to(ticket.sucursal.toString()).emit('ticket_llamado', respuesta);
+        if (io) io.to(ticket.sucursal.toString()).emit('ticket_llamado', respuesta);
 
         res.json({ success: true, ticket: respuesta });
     } catch (e) { 
         console.error(e);
-        res.status(500).send('Error'); 
+        res.status(500).json({ success: false, msg: 'Error al atender derivado' }); 
     }
 };
 
-// BUSCADOR HISTÓRICO
 exports.buscarHistorial = async (req, res) => {
     try {
         const { sucursalId } = req.params;
@@ -363,7 +352,7 @@ exports.buscarHistorial = async (req, res) => {
 
     } catch (e) { 
         console.error(e);
-        res.status(500).send('Error historial'); 
+        res.status(500).json({ success: false, msg: 'Error en el buscador histórico' }); 
     }
 };
 

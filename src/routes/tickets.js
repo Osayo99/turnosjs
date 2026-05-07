@@ -1,18 +1,21 @@
 const express = require('express');
 const router = express.Router();
 const ticketController = require('../controllers/ticketController');
+const { verificarToken, verificarRol } = require('../middleware/auth');
 
 router.post('/crear', ticketController.crearTicket);
-router.post('/llamar', ticketController.llamarTicket);
-router.post('/volver-llamar', ticketController.volverALlamar);
-router.post('/finalizar', ticketController.finalizarTicket);
-router.post('/derivar', ticketController.derivarTicket);
 router.get('/cola/:sucursalId', ticketController.obtenerCola);
-router.get('/activo/:usuarioId', ticketController.obtenerTicketActivo);
 
-// Rutas Jefatura
-router.get('/jefatura/:sucursalId', ticketController.infoJefatura);
-router.post('/atender-derivado', ticketController.atenderDerivado);
-router.get('/historial/:sucursalId', ticketController.buscarHistorial);
+const rolesOperacion = ['ventanilla', 'ejecutivo', 'jefe_sucursal', 'super_admin'];
+router.post('/llamar', verificarToken, verificarRol(rolesOperacion), ticketController.llamarTicket);
+router.post('/volver-llamar', verificarToken, verificarRol(rolesOperacion), ticketController.volverALlamar);
+router.post('/finalizar', verificarToken, verificarRol(rolesOperacion), ticketController.finalizarTicket);
+router.post('/derivar', verificarToken, verificarRol(rolesOperacion), ticketController.derivarTicket);
+router.get('/activo/:usuarioId', verificarToken, verificarRol(rolesOperacion), ticketController.obtenerTicketActivo);
+
+const rolesJefatura = ['jefe_sucursal', 'super_admin'];
+router.get('/jefatura/:sucursalId', verificarToken, verificarRol(rolesJefatura), ticketController.infoJefatura);
+router.post('/atender-derivado', verificarToken, verificarRol(['jefe_sucursal']), ticketController.atenderDerivado);
+router.get('/historial/:sucursalId', verificarToken, verificarRol(rolesJefatura), ticketController.buscarHistorial);
 
 module.exports = router;

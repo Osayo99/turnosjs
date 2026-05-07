@@ -1,39 +1,65 @@
 const Usuario = require('../models/Usuario');
+const jwt = require('jsonwebtoken');
 
-// LOGIN (MODIFICADO)
+// Controlador para la gestión de usuarios (Admin, Jefatura y Ventanilla)
+
+// LOGIN
 exports.login = async (req, res) => {
     const { username, password, sucursalId } = req.body;
     try {
-        // Buscamos el usuario
-        // Nota: Quitamos sucursalId del filtro inicial para dar un mejor mensaje de error
-        // si el usuario existe pero no pertenece a esa sucursal, aunque es opcional.
-        // Mantengo tu lógica original de filtro estricto:
         const user = await Usuario.findOne({ username, sucursal: sucursalId });
         
         if(!user) return res.status(404).json({ success: false, msg: 'Usuario no existe o no pertenece a esta sucursal' });
         
-        // --- CAMBIO AQUÍ: Usar el método del modelo para comparar ---
         const isMatch = await user.compararPassword(password);
         
         if(!isMatch) return res.status(401).json({ success: false, msg: 'Contraseña incorrecta' });
 
-        // Si pasa, devolvemos el usuario (sin el hash por seguridad)
+        // 1. Crear el payload del Token con los datos esenciales
+        const payload = {
+            id: user._id,
+            username: user.username,
+            rol: user.rol,
+            sucursal: user.sucursal
+        };
+
+        // 2. Firmar el Token (Expiración de 8 horas para una jornada laboral estándar)
+        const token = jwt.sign(
+            payload, 
+            process.env.JWT_SECRET || 'anda_super_secret_key_2026', 
+            { expiresIn: '8h' }
+        );
+
+        // 3. Enviar el token en una cookie HttpOnly
+        res.cookie('anda_token', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+            maxAge: 8 * 60 * 60 * 1000
+        });
+
+        // 4. Devolver el usuario limpio al frontend para la interfaz gráfica
         user.password = undefined; 
         res.json({ success: true, user });
 
     } catch (e) { 
         console.error(e);
-        res.status(500).send('Error'); 
+        res.status(500).json({ success: false, msg: 'Error interno del servidor' }); 
     }
 };
 
-// CREAR USUARIO (SIN CAMBIOS, PERO AHORA FUNCIONA SEGURO)
-// Gracias al 'pre save' del modelo, al hacer nuevoUsuario.save(), se encriptará solo.
+// LOGOUT
+exports.logout = (req, res) => {
+    res.clearCookie('anda_token');
+    res.json({ success: true, msg: 'Sesión cerrada correctamente' });
+};
+
+// CREAR USUARIO
 exports.crearUsuario = async (req, res) => {
     try {
         const { nombre, username, password, sucursalId, skills, numeroVentanilla, rol } = req.body;
         
-        const existe = await Usuario.findOne({ username }); // Mejor validar globalmente el username
+        const existe = await Usuario.findOne({ username }); 
         if(existe) return res.status(400).json({ success: false, msg: 'El usuario ya existe' });
 
         const nuevoUsuario = new Usuario({
@@ -46,7 +72,7 @@ exports.crearUsuario = async (req, res) => {
             rol: rol || 'ejecutivo'
         });
 
-        await nuevoUsuario.save(); // <--- AQUÍ SE DISPARA LA ENCRIPTACIÓN AUTOMÁTICA
+        await nuevoUsuario.save(); 
         
         res.json({ success: true, user: nuevoUsuario });
     } catch (e) {
@@ -54,18 +80,15 @@ exports.crearUsuario = async (req, res) => {
     }
 };
 
-// --- MIGRACIÓN DE SEGURIDAD (EJECUTAR UNA VEZ) ---
+// MIGRACIÓN DE SEGURIDAD
 exports.migrarPasswords = async (req, res) => {
     try {
         const usuarios = await Usuario.find();
         let cont = 0;
 
         for (const u of usuarios) {
-            // Si la contraseña no empieza con $2a$ o $2b$, es texto plano (insegura)
             if (!u.password.startsWith('$2')) {
-                // Forzamos a Mongoose a saber que el campo cambió
                 u.markModified('password'); 
-                // Al guardar, el modelo la encriptará
                 await u.save(); 
                 cont++;
             }
@@ -76,35 +99,34 @@ exports.migrarPasswords = async (req, res) => {
     }
 };
 
-// 1. LISTAR COLABORADORES (Para que el Jefe vea a sus empleados)
+// 1. LISTAR USUARIOS
 exports.listarPorSucursal = async (req, res) => {
     try {
         const { sucursalId } = req.params;
-        // Traer todos los usuarios de esa sucursal (excluyendo al que pide si quieres, aqui traemos todos)
         const usuarios = await Usuario.find({ sucursal: sucursalId }).select('-password'); 
         res.json(usuarios);
     } catch (error) { res.status(500).send('Error al listar'); }
 };
 
-// 2. CAMBIAR PROPIA CONTRASEÑA (Para cualquier usuario logueado)
+// 2. CAMBIAR PROPIA CONTRASEÑA
 exports.cambiarPasswordPropio = async (req, res) => {
     try {
         const { usuarioId, actual, nueva } = req.body;
         const usuario = await Usuario.findById(usuarioId);
         
-        // En producción aquí deberías usar bcrypt.compare
-        if(usuario.password !== actual) {
+        const isMatch = await usuario.compararPassword(actual);
+        if(!isMatch) {
             return res.status(400).json({ success: false, msg: 'La contraseña actual es incorrecta' });
         }
 
-        usuario.password = nueva; // En prod: await bcrypt.hash(nueva, 10)
+        usuario.password = nueva; 
         await usuario.save();
         
         res.json({ success: true });
     } catch (e) { res.status(500).send('Error'); }
 };
 
-// 3. RESTABLECER CONTRASEÑA (Administrativo: Jefe -> Ejecutivo o Admin -> Jefe)
+// 3. RESTABLECER CONTRASEÑA
 exports.adminResetPassword = async (req, res) => {
     try {
         const { targetUserId, nuevaPassword } = req.body;
@@ -112,19 +134,18 @@ exports.adminResetPassword = async (req, res) => {
         const usuario = await Usuario.findById(targetUserId);
         if(!usuario) return res.status(404).json({ msg: 'Usuario no encontrado' });
 
-        usuario.password = nuevaPassword; // En prod: hash
+        usuario.password = nuevaPassword; 
         await usuario.save();
 
         res.json({ success: true });
     } catch (e) { res.status(500).send('Error'); }
 };
 
-// 4. ACTUALIZAR USUARIO (Skills, Ventanilla, Nombre y Username)
+// 4. ACTUALIZAR USUARIO
 exports.actualizarUsuario = async (req, res) => {
     try {
         const { id, nombre, username, skills, numeroVentanilla } = req.body;
         
-        // Verificar si el nuevo username ya le pertenece a OTRO usuario distinto
         if (username) {
             const existe = await Usuario.findOne({ username, _id: { $ne: id } });
             if(existe) return res.status(400).json({ success: false, msg: 'El nombre de usuario ya está en uso.' });
@@ -144,7 +165,7 @@ exports.actualizarUsuario = async (req, res) => {
     }
 };
 
-// NUEVA FUNCIÓN: ELIMINAR USUARIO POR JEFE
+// ELIMINAR USUARIO POR JEFE
 exports.eliminarUsuarioJefe = async (req, res) => {
     try {
         const { id } = req.params;
@@ -161,25 +182,19 @@ exports.eliminarUsuarioJefe = async (req, res) => {
     }
 };
 
-// --- MIGRACIÓN DE SKILLS (Ejecutar una vez) ---
-// Convierte ["PAGOS"] a [{ tipo: "PAGOS", prioridad: 1 }]
+// ACTUALIZACIÓN DE SKILLS
 exports.migrarSkills = async (req, res) => {
     try {
-        // Usamos lean() para obtener objetos JS puros y evitar errores de validación de Mongoose
         const usuarios = await Usuario.find().lean(); 
         let cont = 0;
 
         for (const u of usuarios) {
-            // Verificamos si tiene skills y si el primer elemento es un String (formato viejo)
             if (u.skills && u.skills.length > 0 && typeof u.skills[0] === 'string') {
-                
-                // Convertimos al nuevo formato
                 const nuevasSkills = u.skills.map(skillString => ({
                     tipo: skillString,
-                    prioridad: 1 // Por defecto prioridad Alta a lo que ya tenían
+                    prioridad: 1 
                 }));
 
-                // Actualizamos directamente en la base de datos
                 await Usuario.updateOne({ _id: u._id }, { $set: { skills: nuevasSkills } });
                 cont++;
             }

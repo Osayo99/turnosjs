@@ -3,14 +3,14 @@ const Sucursal = require('../models/Sucursal');
 const Ticket = require('../models/Ticket');
 const mongoose = require('mongoose');
 
-// 1. DATA GLOBAL (Panel Principal)
+// 1. DATA GLOBAL (Para mostrar en el dashboard del admin)
 exports.getDataGlobal = async (req, res) => {
     try {
         const sucursales = await Sucursal.find({});
-        // Traemos usuarios, pero populando el nombre de la sucursal
+        // Traemos usuarios con su sucursal para mostrar en el dashboard del admin
         const usuarios = await Usuario.find({}).populate('sucursal', 'nombre');
         
-        // Stats globales hoy
+        // Stats globales del dia (para mostrar en el dashboard del admin)
         const startToday = new Date(); startToday.setHours(0,0,0,0);
         const ticketsHoy = await Ticket.countDocuments({ creadoEn: { $gte: startToday } });
 
@@ -31,12 +31,12 @@ exports.detallesSucursal = async (req, res) => {
         let end = new Date();
         end.setHours(23,59,59,999);
 
-        // Si el admin selecciona fechas, las usamos
+        // Si el admin selecciona fechas, las usamos para filtrar (cubrimos todo el día seleccionado)
         if (fechaInicio) {
             // Nota: Al recibir "YYYY-MM-DD", JS lo interpreta en UTC o Local según navegador.
             // Para asegurar cobertura completa del día, forzamos horas.
             const parts = fechaInicio.split('-');
-            start = new Date(parts[0], parts[1]-1, parts[2]); // Constructor local
+            start = new Date(parts[0], parts[1]-1, parts[2]);
             start.setHours(0,0,0,0);
         }
         
@@ -52,7 +52,7 @@ exports.detallesSucursal = async (req, res) => {
             creadoEn: { $gte: start, $lte: end } 
         };
 
-        // 2. Calcular Estadísticas (Respetando el rango de fecha seleccionado)
+        // 2. Calcular Estadística, respetando el rango de fecha seleccionado.
         const total = await Ticket.countDocuments(filtroBase);
         
         const atendidos = await Ticket.countDocuments({ 
@@ -66,7 +66,7 @@ exports.detallesSucursal = async (req, res) => {
             motivoDerivacion: { $exists: true, $ne: null } 
         });
 
-        // 3. Buscar Registros (Tabla)
+        // 3. Buscar Registros de cualquier tipo en la tabla.
         let filtroRegistros = { ...filtroBase };
 
         if (busqueda) {
@@ -83,8 +83,8 @@ exports.detallesSucursal = async (req, res) => {
         const registros = await Ticket.find(filtroRegistros)
             .populate('ventanillaAtendio', 'nombre rol')
             .populate('derivadoPor', 'nombre')
-            .sort({ creadoEn: -1 }) // Más reciente primero
-            .limit(500); // Límite de seguridad aumentado
+            .sort({ creadoEn: -1 })
+            .limit(500);
 
         res.json({ 
             stats: { total, atendidos, atendidosJefatura },
@@ -105,12 +105,10 @@ exports.eliminarUsuario = async (req, res) => {
     } catch(e) { res.status(500).send('Error'); }
 };
 
-// 4. CREAR USUARIO (Para que el Admin cree Jefes)
+// 4. CREAR USUARIO (Para que el SuperAdmin cree Jefes de Sucrusales)
 exports.crearUsuarioAdmin = async (req, res) => {
     try {
         const { nombre, username, password, sucursalId, rol, ventanilla } = req.body;
-        
-        // Validar duplicados
         const existe = await Usuario.findOne({ username });
         if(existe) return res.status(400).json({ success: false, msg: 'El usuario ya existe.' });
 
@@ -121,7 +119,6 @@ exports.crearUsuarioAdmin = async (req, res) => {
             sucursal: sucursalId, 
             rol, 
             numeroVentanilla: ventanilla || 0,
-            // CORRECCIÓN: Nueva estructura de skills
             skills: [
                 { tipo: 'CONSULTAS', prioridad: 1 },
                 { tipo: 'PAGOS', prioridad: 1 },
@@ -133,7 +130,6 @@ exports.crearUsuarioAdmin = async (req, res) => {
         await nuevo.save();
         res.json({ success: true, msg: 'Jefe creado exitosamente.' });
     } catch(e) { 
-        // CORRECCIÓN: Enviar siempre JSON para que el frontend no colapse
         res.status(500).json({ success: false, msg: 'Error en el servidor: ' + e.message }); 
     }
 };
@@ -143,7 +139,7 @@ exports.configurarExportacion = async (req, res) => {
         const { sucursalId, sheetId, frecuencia } = req.body;
         
         await Sucursal.findByIdAndUpdate(sucursalId, {
-            googleSheetId: sheetId, // Aquí se guarda la URL
+            googleSheetId: sheetId,
             frecuenciaExportacion: frecuencia
         });
 

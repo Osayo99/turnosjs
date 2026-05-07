@@ -1,5 +1,7 @@
 const Sucursal = require('../models/Sucursal');
 
+// Controlador para la gestión de sucursales (Admin y Jefatura)
+
 exports.crearSucursal = async (req, res) => {
     try {
         const { nombre, codigo, direccion } = req.body;
@@ -37,10 +39,10 @@ exports.obtenerSucursalPorId = async (req, res) => {
     }
 };
 
-// NUEVA FUNCIÓN: Datos en vivo para Jefatura
+//Datos en vivo para Jefatura 
 exports.obtenerEstadoJefatura = async (req, res) => {
     try {
-        const { id } = req.params; // ID de la sucursal
+        const { id } = req.params;
         const hoy = new Date();
         const inicioDia = new Date(hoy.setHours(0, 0, 0, 0));
 
@@ -51,22 +53,21 @@ exports.obtenerEstadoJefatura = async (req, res) => {
         const derivados = await Ticket.countDocuments({ sucursal: id, estado: 'derivado', creadoEn: { $gte: inicioDia } });
 
         // 2. Estado de Ventanillas (Usuarios Logueados)
-        // Buscamos usuarios de esta sucursal que NO sean admins/jefes (solo ventanillas/kioscos)
         const usuarios = await Usuario.find({ 
             sucursal: id,
-            rol: { $in: ['ventanilla', 'ejecutivo'] } // Ajusta según tus roles reales
-        }).populate('ticket'); // Traer el ticket activo si tienen
+            rol: { $in: ['ventanilla', 'ejecutivo'] }
+        }).populate('ticket');
 
         // Formatear para el frontend
         const ventanillas = usuarios.map(u => ({
             _id: u._id,
             nombre: u.nombre,
             numeroVentanilla: u.numeroVentanilla || '?',
-            estado: u.estado, // disponible, ocupado, pausa
+            estado: u.estado,
             ticket: u.ticket ? {
                 codigo: u.ticket.codigo,
                 tipoTramite: u.ticket.tipoTramite,
-                actualizadoEn: u.ticket.actualizadoEn || u.ticket.creadoEn // Fallback de fecha
+                actualizadoEn: u.ticket.actualizadoEn || u.ticket.creadoEn
             } : null
         }));
 
@@ -81,7 +82,7 @@ exports.obtenerEstadoJefatura = async (req, res) => {
     }
 };
 
-// NUEVA FUNCIÓN: Editar sucursal
+//Editar sucursal
 exports.actualizarSucursal = async (req, res) => {
     try {
         const { nombre, codigo, direccion } = req.body;
@@ -89,7 +90,7 @@ exports.actualizarSucursal = async (req, res) => {
         const sucursalActualizada = await Sucursal.findByIdAndUpdate(
             req.params.id,
             { nombre, codigo, direccion },
-            { new: true } // Retorna el documento actualizado
+            { new: true }
         );
 
         if (!sucursalActualizada) {
@@ -103,7 +104,7 @@ exports.actualizarSucursal = async (req, res) => {
     }
 };
 
-// NUEVA FUNCIÓN: Eliminar sucursal
+//Eliminar sucursal
 exports.eliminarSucursal = async (req, res) => {
     try {
         const sucursalEliminada = await Sucursal.findByIdAndDelete(req.params.id);

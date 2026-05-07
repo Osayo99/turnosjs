@@ -1,6 +1,8 @@
 const Guia = require('../models/Guia');
 
-// Para el Super Admin (Crear)
+// Controlador para la gestión de guías de usuario (Super Admin y Ventanilla)
+
+// Para el Super Admin (Crear una guia)
 exports.crearGuia = async (req, res) => {
     try {
         const { titulo, contenido } = req.body;
@@ -12,13 +14,28 @@ exports.crearGuia = async (req, res) => {
     }
 };
 
-// Para el Super Admin (Borrar)
+// Para el Super Admin (Borrar una guia)
 exports.eliminarGuia = async (req, res) => {
     try {
         await Guia.findByIdAndDelete(req.params.id);
         res.json({ success: true });
     } catch (error) {
         res.status(500).json({ success: false });
+    }
+};
+
+// Para el Super Admin (Actualizar una guia)
+exports.actualizarGuia = async (req, res) => {
+    try {
+        const { titulo, contenido } = req.body;
+        const guiaActualizada = await Guia.findByIdAndUpdate(
+            req.params.id, 
+            { titulo, contenido },
+            { new: true }
+        );
+        res.json({ success: true, guia: guiaActualizada });
+    } catch (error) {
+        res.status(500).json({ success: false, msg: 'Error al actualizar' });
     }
 };
 
@@ -29,20 +46,5 @@ exports.obtenerGuias = async (req, res) => {
         res.json(guias);
     } catch (error) {
         res.status(500).send('Error obteniendo guias');
-    }
-};
-
-// NUEVA FUNCIÓN: Actualizar
-exports.actualizarGuia = async (req, res) => {
-    try {
-        const { titulo, contenido } = req.body;
-        const guiaActualizada = await Guia.findByIdAndUpdate(
-            req.params.id, 
-            { titulo, contenido },
-            { new: true } // Para que devuelva el objeto ya editado
-        );
-        res.json({ success: true, guia: guiaActualizada });
-    } catch (error) {
-        res.status(500).json({ success: false, msg: 'Error al actualizar' });
     }
 };

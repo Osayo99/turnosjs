@@ -5,12 +5,10 @@ const exportarSucursal = async (sucursalId) => {
     try {
         const sucursal = await Sucursal.findById(sucursalId);
         
-        // Verificamos si tiene configurada la URL del Webhook
         if (!sucursal || !sucursal.googleSheetId || !sucursal.googleSheetId.startsWith('http')) {
-            return; // No hay configuración, no hacemos nada
+            return; 
         }
 
-        // 1. Buscar tickets NUEVOS (Finalizados después de la última exportación)
         const filtro = { sucursal: sucursalId, estado: 'finalizado' };
         
         if (sucursal.ultimaExportacion) {
@@ -23,44 +21,51 @@ const exportarSucursal = async (sucursalId) => {
             .sort({ finalizadoEn: 1 });
 
         if (tickets.length === 0) {
-            // Actualizamos la fecha para que el próximo chequeo sea desde ahora
             sucursal.ultimaExportacion = new Date();
             await sucursal.save();
             return;
         }
 
-        // 2. Preparar los datos para enviar
         const registros = tickets.map(t => [
             t.codigo,
             t.tipoTramite,
             t.documentoCliente || 'N/A',
-            t.creadoEn.toLocaleString('es-SV'),     // Fecha Llegada
-            t.finalizadoEn.toLocaleString('es-SV'), // Fecha Fin
+            t.creadoEn.toLocaleString('es-SV'),     
+            t.finalizadoEn.toLocaleString('es-SV'), 
             convertirSegundos(t.tiempoTotalAtencion),
             t.ventanillaAtendio?.nombre || 'N/A',
             t.notasAtencion || '',
             t.derivadoPor ? `Derivado: ${t.motivoDerivacion}` : 'No'
         ]);
 
-        // 3. ENVIAR AL WEBHOOK (La URL que tienes)
+        console.log(`📤 [Export] Intentando enviar ${tickets.length} tickets a Google Sheets...`);
+
         const response = await fetch(sucursal.googleSheetId, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                sucursal: sucursal.nombre, // Esto será el nombre de la pestaña en Excel
+                sucursal: sucursal.nombre, 
                 registros: registros
             })
         });
 
-        const resultado = await response.json();
+        const responseText = await response.text();
+        let resultado;
+
+        try {
+            resultado = JSON.parse(responseText);
+        } catch (parseError) {
+            console.error(`❌ [Export Error] Google no devolvió un JSON válido.`);
+            console.error(`🔍 [Debug] Respuesta recibida (primeros 150 caracteres):`, responseText.substring(0, 150));
+            return;
+        }
 
         if (resultado.status === 'success') {
-            // 4. Si Google dice "OK", guardamos la fecha de corte
             sucursal.ultimaExportacion = new Date();
             await sucursal.save();
-            console.log(`✅ [Export] ${sucursal.nombre}: ${tickets.length} tickets enviados.`);
+            console.log(`✅ [Export] ${sucursal.nombre}: ${tickets.length} tickets enviados y procesados correctamente.`);
         } else {
-            console.error(`❌ [Export Error] Google rechazó los datos:`, resultado);
+            console.error(`❌ [Export Error] Google procesó la petición pero rechazó los datos:`, resultado);
         }
 
     } catch (error) {

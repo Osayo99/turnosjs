@@ -1,15 +1,20 @@
 const express = require('express');
 const router = express.Router();
 const usuarioController = require('../controllers/usuarioController');
+const { verificarToken, verificarRol } = require('../middleware/auth');
 
 router.post('/login', usuarioController.login);
-router.post('/crear', usuarioController.crearUsuario);
-router.get('/sucursal/:sucursalId', usuarioController.listarPorSucursal);
-router.post('/cambiar-password', usuarioController.cambiarPasswordPropio);
-router.post('/admin-reset-password', usuarioController.adminResetPassword);
-router.post('/actualizar', usuarioController.actualizarUsuario);
-router.get('/migrar-seguridad', usuarioController.migrarPasswords);
-router.get('/migrar-skills', usuarioController.migrarSkills);
-router.delete('/:id', usuarioController.eliminarUsuarioJefe);
+router.post('/logout', usuarioController.logout);
+
+router.post('/cambiar-password', verificarToken, usuarioController.cambiarPasswordPropio);
+
+router.get('/sucursal/:sucursalId', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.listarPorSucursal);
+router.post('/crear', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.crearUsuario);
+router.post('/actualizar', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.actualizarUsuario);
+router.post('/admin-reset-password', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.adminResetPassword);
+router.delete('/:id', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.eliminarUsuarioJefe);
+
+router.get('/migrar-seguridad', verificarToken, verificarRol(['super_admin']), usuarioController.migrarPasswords);
+router.get('/migrar-skills', verificarToken, verificarRol(['super_admin']), usuarioController.migrarSkills);
 
 module.exports = router;

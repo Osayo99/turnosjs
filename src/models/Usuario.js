@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
+// Esquema para la colección de usuarios
+
 const UsuarioSchema = new mongoose.Schema({
     nombre: { type: String, required: true },
     username: { type: String, required: true, unique: true },
@@ -16,9 +18,7 @@ const UsuarioSchema = new mongoose.Schema({
     
     numeroVentanilla: { type: Number, default: 0 },
 
-    // --- CAMBIO IMPORTANTE: ESTRUCTURA DE PRIORIDADES ---
-    // Antes: skills: ["PAGOS", "CONSULTAS"]
-    // Ahora: skills: [{ tipo: "PAGOS", prioridad: 1 }, { tipo: "CONSULTAS", prioridad: 2 }]
+    // Habilidades y especializaciones del usuario, para asignación inteligente de tickets
     skills: [{
         tipo: { type: String, required: true },
         prioridad: { type: Number, default: 1 } // 1: Alta, 2: Media, 3: Baja
@@ -35,14 +35,14 @@ const UsuarioSchema = new mongoose.Schema({
     ticket: { type: mongoose.Schema.Types.ObjectId, ref: 'Ticket' }
 });
 
-// --- HOOK: Encriptar contraseña ---
+//Encriptar contraseña ---
 UsuarioSchema.pre('save', async function() {
     if (!this.isModified('password')) return;
     const salt = await bcrypt.genSalt(10);
     this.password = await bcrypt.hash(this.password, salt);
 });
 
-// --- MÉTODO: Comparar contraseña ---
+//Comparar contraseña ---
 UsuarioSchema.methods.compararPassword = async function(candidatePassword) {
     return await bcrypt.compare(candidatePassword, this.password);
 };
