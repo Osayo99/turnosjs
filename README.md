@@ -122,7 +122,7 @@ Haga clic en el icono del disco (Guardar) y asígnele un nombre (ej. Exportador 
 <img width="1172" height="621" alt="image" src="https://github.com/user-attachments/assets/14c22cbb-1a77-4c6b-b371-d2b0391125bf" />
 
 
-## 3. Desplegar como Aplicación Web (Paso Crítico)
+## 3. Desplegar como Aplicación Web
 Haga clic en el botón azul Implementar > Nueva implementación.
 <img width="576" height="387" alt="image" src="https://github.com/user-attachments/assets/e41c4216-0eef-44cc-8e18-8ec9262a92d8" />
 
