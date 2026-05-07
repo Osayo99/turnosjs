@@ -35,6 +35,6 @@ Antes de comenzar, asegurese de contar con lo siguiente:
 # 1 - Actualizar el Servidor
 Conectese al servidor via SSH y ejecute:
 
+```bash
 bashsudo apt update && sudo apt upgrade -y
 
-<img width="856" height="653" alt="image" src="https://github.com/user-attachments/assets/55e0d476-f6a5-4829-93cb-a8d58356f1b3" />
