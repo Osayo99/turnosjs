@@ -53,7 +53,8 @@ sudo apt install -y nodejs
 ```
 
 # 3 - Instalar MongoDB
-Siga las instrucciones oficiales para instalar MongoDB en Ubuntu. Una vez instalado, inicie el servicio:
+Siga las instrucciones oficiales para instalar MongoDB en Ubuntu. Se recomienda seguir esta guia: https://www.datacamp.com/es/tutorial/install-mongodb-on-ubuntu
+Una vez instalado, inicie el servicio:
 No es necesario crear una base de datos, Mongoose la creara automaticamente.
 
 ```bash
@@ -67,6 +68,7 @@ Elija la ubicacion donde se clonara el repositorio y ejecute los siguientes coma
 ```bash
 git clone <URL_DEL_REPOSITORIO>
 cd <NOMBRE_DEL_DIRECTORIO>
+sudo apt install npm
 npm install
 ```
 
@@ -78,12 +80,14 @@ nano .env
 ```
 
 Agregue las siguientes lineas al archivo:
+- development para pruebas sobre HTTP
+- production para produccion solo HTTPS
 
 ```bash
 PORT=3000
 JWT_SECRET=clave_secreta_aqui
 MONGO_URI=mongodb://127.0.0.1:27017/anda_turnos
-NODE_ENV=production
+NODE_ENV=development
 ```
 
 # 6 - Crear el usuario Super Admin
@@ -94,7 +98,7 @@ node crearAdmin.js
 ```
 Esto creará un usuario administrador por defecto, asegurese de cambiar la clave una vez ingrese al sistema, y elimine o mueve al archivo crearAdmin.js a un lugar seguro fuera del proyecto:
 
-Usuario: admin
+Usuario: superanda
 Clave: 123
 
 # 7 - Ejecutar en Producción con PM2
