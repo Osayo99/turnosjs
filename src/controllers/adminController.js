@@ -156,7 +156,8 @@ exports.configurarExportacion = async (req, res) => {
 
         await Sucursal.findByIdAndUpdate(sucursalId, {
             googleSheetId: sheetId,
-            frecuenciaExportacion: frecuencia
+            frecuenciaExportacion: frecuencia,
+            ultimaExportacion: null
         });
 
         res.json({ success: true });

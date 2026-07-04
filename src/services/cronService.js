@@ -28,7 +28,16 @@ const initCronJobs = () => {
     // TAREA 4: 5 MINUTOS (Para pruebas y monitoreo rápido)
     cron.schedule('*/5 * * * *', async () => {
         const sucursales = await Sucursal.find({ frecuenciaExportacion: '5m' });
-        if(sucursales.length > 0) console.log(`[TEST] Ejecutando reporte rápido (${sucursales.length} sucursales)...`);
+        if(sucursales.length > 0) console.log(`Ejecutando reporte cada 5min (${sucursales.length} sucursales)...`);
+        for (const s of sucursales) {
+            await exportarSucursal(s._id);
+        }
+    });
+
+    // TAREA 5: 1 MINUTO (Para desarrollo y pruebas rápidas)
+    cron.schedule('* * * * *', async () => {
+        const sucursales = await Sucursal.find({ frecuenciaExportacion: '1m' });
+        if(sucursales.length > 0) console.log(`[DEV] Ejecutando reporte cada 1min (${sucursales.length} sucursales)...`);
         for (const s of sucursales) {
             await exportarSucursal(s._id);
         }

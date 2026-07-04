@@ -10,7 +10,7 @@ const SucursalSchema = new mongoose.Schema({
     googleSheetId: { type: String, default: '' },
     frecuenciaExportacion: { 
         type: String, 
-        enum: ['none', '1h', '24h', '7d', '5m'], 
+        enum: ['none', '1m', '5m', '1h', '24h', '7d'], 
         default: 'none' 
     },
     ultimaExportacion: { type: Date, default: null }
