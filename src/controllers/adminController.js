@@ -1,16 +1,14 @@
+// Controlador de administración global. Proporciona dashboard, auditoría por sucursal y gestión de usuarios para el super administrador.
 const Usuario = require('../models/Usuario');
 const Sucursal = require('../models/Sucursal');
 const Ticket = require('../models/Ticket');
 const mongoose = require('mongoose');
 
-// 1. DATA GLOBAL (Para mostrar en el dashboard del admin)
 exports.getDataGlobal = async (req, res) => {
     try {
         const sucursales = await Sucursal.find({});
-        // Traemos usuarios con su sucursal para mostrar en el dashboard del admin
         const usuarios = await Usuario.find({}).populate('sucursal', 'nombre').select('-password');
         
-        // Stats globales del dia (para mostrar en el dashboard del admin)
         const startToday = new Date(); startToday.setHours(0,0,0,0);
         const ticketsHoy = await Ticket.countDocuments({ creadoEn: { $gte: startToday } });
 
@@ -18,23 +16,17 @@ exports.getDataGlobal = async (req, res) => {
     } catch (e) { res.status(500).send('Error admin'); }
 };
 
-// 2. DETALLES DE SUCURSAL (Vista de Auditoría + Buscador)
 exports.detallesSucursal = async (req, res) => {
     try {
         const { sucursalId } = req.params;
         const { busqueda, fechaInicio, fechaFin } = req.query;
 
-        // 1. Configurar Rango de Fechas
-        // Por defecto: HOY (00:00:00 a 23:59:59)
         let start = new Date();
         start.setHours(0,0,0,0);
         let end = new Date();
         end.setHours(23,59,59,999);
 
-        // Si el admin selecciona fechas, las usamos para filtrar (cubrimos todo el día seleccionado)
         if (fechaInicio) {
-            // Nota: Al recibir "YYYY-MM-DD", JS lo interpreta en UTC o Local según navegador.
-            // Para asegurar cobertura completa del día, forzamos horas.
             const parts = fechaInicio.split('-');
             start = new Date(parts[0], parts[1]-1, parts[2]);
             start.setHours(0,0,0,0);
@@ -46,13 +38,11 @@ exports.detallesSucursal = async (req, res) => {
             end.setHours(23,59,59,999);
         }
 
-        // Filtro Base (Sucursal + Rango Fecha)
         const filtroBase = { 
             sucursal: sucursalId, 
             creadoEn: { $gte: start, $lte: end } 
         };
 
-        // 2. Calcular Estadística, respetando el rango de fecha seleccionado.
         const total = await Ticket.countDocuments(filtroBase);
         
         const atendidos = await Ticket.countDocuments({ 
@@ -66,7 +56,6 @@ exports.detallesSucursal = async (req, res) => {
             motivoDerivacion: { $exists: true, $ne: null } 
         });
 
-        // 3. Buscar Registros de cualquier tipo en la tabla.
         let filtroRegistros = { ...filtroBase };
 
         if (busqueda) {
@@ -78,7 +67,6 @@ exports.detallesSucursal = async (req, res) => {
                 { notasAtencion: regex },
                 { motivoDerivacion: regex }
             ];
-            // Buscar también por código de empleado (en la colección Usuario)
             const usuariosPorCodigo = await Usuario.find({ codigoEmpleado: regex }).select('_id').lean();
             if (usuariosPorCodigo.length > 0) {
                 filtroRegistros.$or.push(
@@ -104,7 +92,6 @@ exports.detallesSucursal = async (req, res) => {
     }
 };
 
-// 3. ELIMINAR USUARIO
 exports.eliminarUsuario = async (req, res) => {
     try {
         await Usuario.findByIdAndDelete(req.params.id);
@@ -112,7 +99,6 @@ exports.eliminarUsuario = async (req, res) => {
     } catch(e) { res.status(500).send('Error'); }
 };
 
-// 4. CREAR USUARIO (Para que el SuperAdmin cree Jefes de Sucrusales)
 exports.crearUsuarioAdmin = async (req, res) => {
     try {
         const { nombre, username, password, sucursalId, rol, ventanilla, codigoEmpleado } = req.body;
@@ -164,7 +150,6 @@ exports.configurarExportacion = async (req, res) => {
     } catch (e) { res.status(500).send('Error guardando configuración'); }
 };
 
-// 5. EDITAR USUARIO
 exports.editarUsuario = async (req, res) => {
     try {
         const { id, nombre, username, rol, sucursalId, codigoEmpleado } = req.body;
@@ -173,7 +158,6 @@ exports.editarUsuario = async (req, res) => {
             return res.status(400).json({ success: false, msg: 'El codigo de empleado debe ser numerico de 5 digitos (00001-99999)' });
         }
         
-        // Verificar si el nuevo username ya le pertenece a OTRO usuario distinto
         const existe = await Usuario.findOne({ username, _id: { $ne: id } });
         if(existe) return res.status(400).json({ success: false, msg: 'El nombre de usuario ya está en uso por otra persona.' });
 
@@ -182,7 +166,7 @@ exports.editarUsuario = async (req, res) => {
             nombre,
             username,
             rol,
-            sucursal: sucursalId || null // Si no elige sucursal, queda como global (null)
+            sucursal: sucursalId || null
         });
 
         res.json({ success: true, msg: 'Usuario actualizado correctamente.' });

@@ -1,3 +1,4 @@
+// Script para crear el usuario super administrador inicial del sistema. Verifica duplicados antes de insertar.
 require('dotenv').config({ quiet: true });
 const mongoose = require('mongoose');
 const Usuario = require('./src/models/Usuario');

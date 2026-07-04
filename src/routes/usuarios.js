@@ -1,3 +1,4 @@
+// Rutas de autenticación y gestión de usuarios. Define endpoints de login, CRUD y migraciones con rate limiting.
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');

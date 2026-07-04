@@ -1,8 +1,7 @@
+// Middleware de autenticación JWT y autorización por roles. Verifica tokens en cookies y restringe acceso a rutas protegidas.
 const jwt = require('jsonwebtoken');
 
-// Middleware para verificar que el usuario esté autenticado
 const verificarToken = (req, res, next) => {
-    // Obtenemos el token de las cookies (requiere cookie-parser, que ya tienes instalado y configurado)
     const token = req.cookies.anda_token;
 
     if (!token) {
@@ -19,14 +18,10 @@ const verificarToken = (req, res, next) => {
         }
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
-        // Inyectamos los datos del usuario decodificados en la petición actual
-        // Así, cualquier controlador que se ejecute después, sabrá quién es req.usuario
         req.usuario = decoded;
         
-        // Todo está correcto, dejamos que la petición continúe su camino
         next();
     } catch (error) {
-        // Si el token fue modificado, es falso, o expiró (pasaron las 8 horas)
         return res.status(401).json({ 
             success: false, 
             msg: 'Sesión inválida o expirada. Por favor, inicie sesión nuevamente.' 
@@ -34,11 +29,8 @@ const verificarToken = (req, res, next) => {
     }
 };
 
-// Middleware para autorización basada en roles
-// Uso: router.post('/ruta', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), controlador)
 const verificarRol = (rolesPermitidos) => {
     return (req, res, next) => {
-        // Por seguridad, verificamos que el middleware verificarToken ya haya pasado
         if (!req.usuario || !req.usuario.rol) {
             return res.status(401).json({ 
                 success: false, 
@@ -46,7 +38,6 @@ const verificarRol = (rolesPermitidos) => {
             });
         }
         
-        // Comparamos el rol del token con los roles permitidos en la ruta
         if (!rolesPermitidos.includes(req.usuario.rol)) {
             return res.status(403).json({ 
                 success: false, 
@@ -54,7 +45,6 @@ const verificarRol = (rolesPermitidos) => {
             });
         }
         
-        // El usuario tiene el rol correcto, continúa
         next();
     };
 };

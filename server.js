@@ -1,3 +1,4 @@
+// Archivo principal del servidor Express. Configura middlewares, WebSockets, subida de archivos y rutas de la API.
 require('dotenv').config({ quiet: true });
 const express = require('express');
 const cookieParser = require('cookie-parser');
@@ -23,7 +24,6 @@ process.on('uncaughtException', (err) => {
 const app = express();
 const server = http.createServer(app);
 
-// 2. Configuración de WebSockets (Socket.io)
 const io = new Server(server, {
     cors: {
         origin: process.env.CORS_ORIGIN || '*',
@@ -31,7 +31,6 @@ const io = new Server(server, {
     }
 });
 
-// Almacenar io en express para usarlo libremente en los controladores
 app.set('io', io);
 
 io.on('connection', (socket) => {
@@ -47,22 +46,17 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
-        // Limpiamos el log para no saturar la consola, mantenemos tracking
         console.log(`Cliente desconectado: ${socket.id}`);
     });
 });
 
-// 3. Conexión a Base de Datos y Cron Jobs
-// (El initCronJobs ya se llama dentro de connectDB en tu config)
 connectDB(); 
 
-// 4. Middlewares de Express (¡El orden es vital!)
 app.use(cors());
 app.use(express.json({ limit: process.env.MAX_BODY_SIZE || '5mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// 5. Configuración Segura de Multer (Subida de Videos)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
         const dir = process.env.UPLOAD_DIR || './public/uploads';
@@ -72,13 +66,11 @@ const storage = multer.diskStorage({
         cb(null, dir);
     },
     filename: function (req, file, cb) {
-        // Sanitizar el ID de la sucursal para evitar inyección de rutas (Path Traversal)
         const sucursalId = req.body.sucursalId ? req.body.sucursalId.replace(/[^a-zA-Z0-9]/g, '') : 'default';
         cb(null, `video-${sucursalId}.mp4`); 
     }
 });
 
-// Limitar subida estricta a 50MB y forzar a que solo sea MP4
 const upload = multer({ 
     storage: storage,
     limits: { fileSize: parseInt(process.env.MAX_UPLOAD_SIZE) || 50 * 1024 * 1024 },
@@ -91,7 +83,6 @@ const upload = multer({
     }
 });
 
-// 6. Rutas de la API
 app.get('/', (req, res) => {
     res.send('API Sistema de Turnos ANDA - Lista para Producción');
 });
@@ -109,7 +100,6 @@ app.post('/api/upload-video', verificarToken, verificarRol(['jefe_sucursal', 'su
         io.to(sucursalId).emit('video_actualizado', { url: `${publicUrl}?t=${Date.now()}` });
         res.json({ success: true, url: publicUrl });
     } catch (e) {
-        // Pasamos el error al manejador global en lugar de hacer que crashee
         next(e); 
     }
 });
@@ -120,12 +110,9 @@ app.use('/api/sucursales', require('./src/routes/sucursales'));
 app.use('/api/admin', require('./src/routes/admin'));
 app.use('/api/guias', require('./src/routes/guias'));
 
-// 7. MIDDLEWARE GLOBAL DE MANEJO DE ERRORES (El escudo final)
-// Si cualquier ruta falla internamente y rompe el código, cae aquí como red de seguridad
 app.use((err, req, res, next) => {
     console.error('Error Crítico Capturado:', err.message || err);
     
-    // Interceptar errores de Multer (ej. archivo muy grande)
     if (err instanceof multer.MulterError) {
         return res.status(400).json({ success: false, msg: `Error de archivo: ${err.message}` });
     }
@@ -136,7 +123,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-// 8. Inicialización del Servidor
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`\n=================================================`);

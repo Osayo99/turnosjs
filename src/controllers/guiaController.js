@@ -1,8 +1,6 @@
+// Controlador de guías de usuario. Permite crear, editar, eliminar y consultar las guías del sistema.
 const Guia = require('../models/Guia');
 
-// Controlador para la gestión de guías de usuario (Super Admin y Ventanilla)
-
-// Para el Super Admin (Crear una guia)
 exports.crearGuia = async (req, res) => {
     try {
         const { titulo, contenido } = req.body;
@@ -14,7 +12,6 @@ exports.crearGuia = async (req, res) => {
     }
 };
 
-// Para el Super Admin (Borrar una guia)
 exports.eliminarGuia = async (req, res) => {
     try {
         await Guia.findByIdAndDelete(req.params.id);
@@ -24,7 +21,6 @@ exports.eliminarGuia = async (req, res) => {
     }
 };
 
-// Para el Super Admin (Actualizar una guia)
 exports.actualizarGuia = async (req, res) => {
     try {
         const { titulo, contenido } = req.body;
@@ -39,7 +35,6 @@ exports.actualizarGuia = async (req, res) => {
     }
 };
 
-// Para Ventanilla y Admin (Leer todas)
 exports.obtenerGuias = async (req, res) => {
     try {
         const guias = await Guia.find().sort({ creadoEn: -1 });

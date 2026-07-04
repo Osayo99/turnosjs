@@ -1,6 +1,5 @@
+// Modelo Mongoose para guías de usuario del sistema. Almacena título, contenido y fecha de creación.
 const mongoose = require('mongoose');
-
-// Esquema para la colección de guías
 
 const GuiaSchema = new mongoose.Schema({
     titulo: { type: String, required: true },

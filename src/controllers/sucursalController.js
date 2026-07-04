@@ -1,8 +1,7 @@
+// Controlador de sucursales. Gestiona altas, bajas, modificaciones y consulta del estado en vivo de cada sucursal.
 const Sucursal = require('../models/Sucursal');
 const Ticket = require('../models/Ticket');
 const Usuario = require('../models/Usuario');
-
-// Controlador para la gestión de sucursales (Admin y Jefatura)
 
 exports.crearSucursal = async (req, res) => {
     try {
@@ -41,26 +40,22 @@ exports.obtenerSucursalPorId = async (req, res) => {
     }
 };
 
-//Datos en vivo para Jefatura 
 exports.obtenerEstadoJefatura = async (req, res) => {
     try {
         const { id } = req.params;
         const hoy = new Date();
         const inicioDia = new Date(hoy.setHours(0, 0, 0, 0));
 
-        // 1. Estadísticas rápidas
         const total = await Ticket.countDocuments({ sucursal: id, creadoEn: { $gte: inicioDia } });
         const espera = await Ticket.countDocuments({ sucursal: id, estado: 'pendiente', creadoEn: { $gte: inicioDia } });
         const atendidos = await Ticket.countDocuments({ sucursal: id, estado: 'finalizado', creadoEn: { $gte: inicioDia } });
         const derivados = await Ticket.countDocuments({ sucursal: id, estado: 'derivado', creadoEn: { $gte: inicioDia } });
 
-        // 2. Estado de Ventanillas (Usuarios Logueados)
         const usuarios = await Usuario.find({ 
             sucursal: id,
             rol: { $in: ['ventanilla', 'ejecutivo'] }
         }).populate('ticket');
 
-        // Formatear para el frontend
         const ventanillas = usuarios.map(u => ({
             _id: u._id,
             nombre: u.nombre,
@@ -84,7 +79,6 @@ exports.obtenerEstadoJefatura = async (req, res) => {
     }
 };
 
-//Editar sucursal
 exports.actualizarSucursal = async (req, res) => {
     try {
         const { nombre, codigo, direccion } = req.body;
@@ -106,7 +100,6 @@ exports.actualizarSucursal = async (req, res) => {
     }
 };
 
-//Eliminar sucursal
 exports.eliminarSucursal = async (req, res) => {
     try {
         const sucursalEliminada = await Sucursal.findByIdAndDelete(req.params.id);

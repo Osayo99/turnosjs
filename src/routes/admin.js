@@ -1,3 +1,4 @@
+// Rutas de administración global. Expone dashboard, auditoría y gestión de entidades para el super administrador.
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');

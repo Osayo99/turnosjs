@@ -1,3 +1,4 @@
+// Configuración de conexión a MongoDB con reintentos automáticos. Inicializa tareas programadas tras establecer la conexión.
 const mongoose = require('mongoose');
 const Sucursal = require('../models/Sucursal'); 
 const { initCronJobs } = require('../services/cronService');

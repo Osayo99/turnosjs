@@ -1,3 +1,4 @@
+// Rutas de tickets del sistema de turnos. Expone creación, asignación, finalización y consultas con control de acceso.
 const express = require('express');
 const router = express.Router();
 const rateLimit = require('express-rate-limit');

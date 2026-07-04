@@ -1,3 +1,4 @@
+// Rutas de sucursales. Expone consulta pública y administración protegida de sucursales.
 const express = require('express');
 const router = express.Router();
 const sucursalController = require('../controllers/sucursalController');

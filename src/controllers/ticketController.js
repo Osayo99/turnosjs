@@ -1,11 +1,9 @@
+// Controlador de tickets del sistema de turnos. Gestiona creación, asignación, llamada, finalización, derivación y consulta de tickets.
 const Ticket = require('../models/Ticket');
 const Sucursal = require('../models/Sucursal');
 const Usuario = require('../models/Usuario');
 const mongoose = require('mongoose');
 
-// Controlador para la gestión de tickets (Ventanilla, Jefatura y Auditoría de tickets históricos)
-
-// CREAR TICKET (Kiosco)
 exports.crearTicket = async (req, res) => {
     try {
         const { sucursalId, tipoTramite, documento, condiciones } = req.body;
@@ -53,7 +51,6 @@ exports.crearTicket = async (req, res) => {
     }
 };
 
-// LLAMAR SIGUIENTE
 exports.llamarTicket = async (req, res) => {
     const { usuarioId, sucursalId, ventanilla } = req.body;
 
@@ -117,7 +114,6 @@ exports.llamarTicket = async (req, res) => {
     }
 };
 
-// RE-LLAMAR
 exports.volverALlamar = async (req, res) => {
     try {
         const { sucursalId, usuarioId } = req.body;
@@ -139,7 +135,6 @@ exports.volverALlamar = async (req, res) => {
     }
 };
 
-// FINALIZAR o LIBERAR USUARIO
 exports.finalizarTicket = async (req, res) => {
     try {
         const { ticketId, notas, tiempoTotal } = req.body;
@@ -168,7 +163,6 @@ exports.finalizarTicket = async (req, res) => {
     }
 };
 
-// DERIVAR y/o LIBERAR USUARIO)
 exports.derivarTicket = async (req, res) => {
     try {
         const { ticketId, motivo, usuarioId } = req.body;
@@ -196,7 +190,6 @@ exports.derivarTicket = async (req, res) => {
     }
 };
 
-// OBTENER COLA
 exports.obtenerCola = async (req, res) => {
     try {
         const { sucursalId } = req.params;
@@ -208,8 +201,6 @@ exports.obtenerCola = async (req, res) => {
         res.status(500).json({ success: false, msg: 'Error obteniendo la cola' }); 
     }
 };
-
-// --- JEFATURA ---
 
 exports.infoJefatura = async (req, res) => {
     try {

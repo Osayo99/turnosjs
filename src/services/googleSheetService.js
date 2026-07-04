@@ -1,3 +1,4 @@
+// Servicio de exportación de tickets finalizados a Google Sheets. Construye registros y los envía mediante Google Apps Script.
 const Ticket = require('../models/Ticket');
 const Sucursal = require('../models/Sucursal');
 

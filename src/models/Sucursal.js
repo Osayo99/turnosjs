@@ -1,6 +1,5 @@
+// Modelo Mongoose para sucursales. Define campos de identificación, exportación a Google Sheets y video institucional.
 const mongoose = require('mongoose');
-
-// Esquema para la colección de sucursales
 
 const SucursalSchema = new mongoose.Schema({
     nombre: { type: String, required: true },

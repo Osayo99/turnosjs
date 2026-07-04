@@ -1,3 +1,4 @@
+// Controlador de usuarios. Gestiona autenticación, creación, edición, eliminación y migración de datos de usuarios.
 const Usuario = require('../models/Usuario');
 const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
@@ -26,7 +27,6 @@ exports.login = async (req, res) => {
             return res.status(401).json({ success: false, msg: 'Credenciales inválidas' });
         }
 
-        // 1. Crear el payload del Token con los datos esenciales
         const payload = {
             id: user._id,
             username: user.username,
@@ -44,7 +44,6 @@ exports.login = async (req, res) => {
             { expiresIn: '8h' }
         );
 
-        // 3. Enviar el token en una cookie HttpOnly
         res.cookie('anda_token', token, {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
@@ -52,7 +51,6 @@ exports.login = async (req, res) => {
             maxAge: 8 * 60 * 60 * 1000
         });
 
-        // 4. Devolver el usuario limpio al frontend para la interfaz gráfica
         user.password = undefined; 
         res.json({ success: true, user });
 
@@ -62,13 +60,11 @@ exports.login = async (req, res) => {
     }
 };
 
-// LOGOUT
 exports.logout = (req, res) => {
     res.clearCookie('anda_token');
     res.json({ success: true, msg: 'Sesión cerrada correctamente' });
 };
 
-// CREAR USUARIO
 exports.crearUsuario = async (req, res) => {
     try {
         const { nombre, username, password, sucursalId, skills, numeroVentanilla, rol, codigoEmpleado } = req.body;
@@ -99,7 +95,6 @@ exports.crearUsuario = async (req, res) => {
     }
 };
 
-// MIGRACIÓN DE SEGURIDAD
 exports.migrarPasswords = async (req, res) => {
     try {
         const usuarios = await Usuario.find();
@@ -118,7 +113,6 @@ exports.migrarPasswords = async (req, res) => {
     }
 };
 
-// 1. LISTAR USUARIOS
 exports.listarPorSucursal = async (req, res) => {
     try {
         const { sucursalId } = req.params;
@@ -127,7 +121,6 @@ exports.listarPorSucursal = async (req, res) => {
     } catch (error) { res.status(500).send('Error al listar'); }
 };
 
-// 2. CAMBIAR PROPIA CONTRASEÑA
 exports.cambiarPasswordPropio = async (req, res) => {
     try {
         const { usuarioId, actual, nueva } = req.body;
@@ -145,7 +138,6 @@ exports.cambiarPasswordPropio = async (req, res) => {
     } catch (e) { res.status(500).send('Error'); }
 };
 
-// 3. RESTABLECER CONTRASEÑA
 exports.adminResetPassword = async (req, res) => {
     try {
         const { targetUserId, nuevaPassword } = req.body;
@@ -160,7 +152,6 @@ exports.adminResetPassword = async (req, res) => {
     } catch (e) { res.status(500).send('Error'); }
 };
 
-// 4. ACTUALIZAR USUARIO
 exports.actualizarUsuario = async (req, res) => {
     try {
         const { id, nombre, username, skills, numeroVentanilla, codigoEmpleado } = req.body;
@@ -189,7 +180,6 @@ exports.actualizarUsuario = async (req, res) => {
     }
 };
 
-// ELIMINAR USUARIO POR JEFE
 exports.eliminarUsuarioJefe = async (req, res) => {
     try {
         const { id } = req.params;
@@ -206,7 +196,6 @@ exports.eliminarUsuarioJefe = async (req, res) => {
     }
 };
 
-// ACTUALIZACIÓN DE SKILLS
 exports.migrarSkills = async (req, res) => {
     try {
         const usuarios = await Usuario.find().lean(); 

@@ -1,3 +1,4 @@
+// Rutas de guías de usuario. Expone consulta pública y administración restringida de guías.
 const express = require('express');
 const router = express.Router();
 const guiaController = require('../controllers/guiaController');
