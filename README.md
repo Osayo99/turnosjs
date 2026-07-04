@@ -75,15 +75,49 @@ npm install
 ```
 
 # 5 - Configurar Variables de Entorno
-Cree un archivo .env en la raíz del proyecto:
+
+El proyecto incluye un archivo `.env.example` como plantilla. **Nunca suba el archivo `.env` al repositorio** (ya está incluido en `.gitignore`).
 
 ```bash
+cp .env.example .env
 nano .env
 ```
 
-Agregue las siguientes lineas al archivo (reemplace los valores segun corresponda):
-- `development` para pruebas sobre HTTP
-- `production` para produccion solo HTTPS
+## Generar JWT_SECRET seguro
+
+El secreto JWT **no debe estar hardcodeado** ni ser predecible. Genere uno seguro con:
+
+```bash
+openssl rand -base64 64
+```
+
+Copie el resultado y péguelo como valor de `JWT_SECRET` en su `.env`:
+
+```env
+JWT_SECRET=pegue_aqui_el_resultado_de_openssl
+```
+
+En producción se recomienda inyectar `JWT_SECRET` como **variable de entorno del sistema operativo** en lugar de usar el archivo `.env`. Esto evita que el secreto quede expuesto en el sistema de archivos:
+
+```bash
+export JWT_SECRET=$(openssl rand -base64 64)
+```
+
+Si usa PM2, puede configurarlo en el `ecosystem.config.js`:
+
+```javascript
+module.exports = {
+  apps: [{
+    name: 'anda-turnos',
+    script: 'server.js',
+    env: {
+      JWT_SECRET: process.env.JWT_SECRET
+    }
+  }]
+};
+```
+
+## Variables disponibles
 
 ```bash
 # PUERTO
@@ -95,7 +129,7 @@ DB_MAX_RETRIES=3
 DB_RETRY_DELAY=3000
 
 # SEGURIDAD
-JWT_SECRET=clave_secreta_aqui
+JWT_SECRET=generado_con_openssl_rand_base64_64
 CORS_ORIGIN=*
 
 # SUBIDA DE ARCHIVOS
@@ -109,10 +143,12 @@ RATE_LIMIT_MAX=10
 
 # ADMIN POR DEFECTO
 ADMIN_USERNAME=superanda
-ADMIN_PASSWORD=123
+ADMIN_PASSWORD=cambiar_por_clave_segura
 
 # ENTORNO
-NODE_ENV=development
+# development: stack traces visibles, HTTP sin TLS
+# production:  cookies secure, sin stack traces
+NODE_ENV=production
 ```
 
 # 6 - Crear el usuario Super Admin

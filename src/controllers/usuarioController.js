@@ -1,25 +1,30 @@
 const Usuario = require('../models/Usuario');
+const mongoose = require('mongoose');
 const jwt = require('jsonwebtoken');
 
-// Controlador para la gestión de usuarios (Admin, Jefatura y Ventanilla)
-
-// LOGIN
 exports.login = async (req, res) => {
     const { username, password, sucursalId } = req.body;
+
+    if (typeof username !== 'string' || typeof password !== 'string') {
+        return res.status(400).json({ success: false, msg: 'Datos inválidos' });
+    }
+
     try {
-        let filtro = { username };
+        if (sucursalId && !mongoose.Types.ObjectId.isValid(sucursalId)) {
+            return res.status(400).json({ success: false, msg: 'Sucursal inválida' });
+        }
+
+        let filtro = { username: username.trim() };
         if (sucursalId) {
-            filtro.sucursal = sucursalId;
+            filtro.sucursal = new mongoose.Types.ObjectId(sucursalId);
         } else {
             filtro.sucursal = null;
         }
         const user = await Usuario.findOne(filtro);
-        
-        if(!user) return res.status(404).json({ success: false, msg: 'Usuario no existe o no pertenece a esta sucursal' });
-        
-        const isMatch = await user.compararPassword(password);
-        
-        if(!isMatch) return res.status(401).json({ success: false, msg: 'Contraseña incorrecta' });
+
+        if (!user || !(await user.compararPassword(password))) {
+            return res.status(401).json({ success: false, msg: 'Credenciales inválidas' });
+        }
 
         // 1. Crear el payload del Token con los datos esenciales
         const payload = {

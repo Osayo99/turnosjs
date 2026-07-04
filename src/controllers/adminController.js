@@ -8,7 +8,7 @@ exports.getDataGlobal = async (req, res) => {
     try {
         const sucursales = await Sucursal.find({});
         // Traemos usuarios con su sucursal para mostrar en el dashboard del admin
-        const usuarios = await Usuario.find({}).populate('sucursal', 'nombre');
+        const usuarios = await Usuario.find({}).populate('sucursal', 'nombre').select('-password');
         
         // Stats globales del dia (para mostrar en el dashboard del admin)
         const startToday = new Date(); startToday.setHours(0,0,0,0);
