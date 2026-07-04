@@ -151,14 +151,6 @@ pm2 save
 pm2 startup
 ```
 
-Para verificar que el servicio funciona correctamente, ejecute el suite de pruebas:
-
-```bash
-bash test_api.sh
-```
-
-Todas las pruebas deben pasar (48 tests, 0 fallos).
-
 # 8 - Integración con Google Sheets
 El sistema permite exportar automáticamente los tickets finalizados a una hoja de cálculo de Google Sheets.
 
