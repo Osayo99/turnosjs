@@ -18,6 +18,7 @@ const rolesOperacion = ['ventanilla', 'ejecutivo', 'jefe_sucursal', 'super_admin
 router.post('/llamar', verificarToken, verificarRol(rolesOperacion), ticketController.llamarTicket);
 router.post('/volver-llamar', verificarToken, verificarRol(rolesOperacion), ticketController.volverALlamar);
 router.post('/finalizar', verificarToken, verificarRol(rolesOperacion), ticketController.finalizarTicket);
+router.post('/ausente', verificarToken, verificarRol(rolesOperacion), ticketController.marcarAusente);
 router.post('/derivar', verificarToken, verificarRol(rolesOperacion), ticketController.derivarTicket);
 router.get('/activo/:usuarioId', verificarToken, verificarRol(rolesOperacion), ticketController.obtenerTicketActivo);
 

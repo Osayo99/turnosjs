@@ -78,9 +78,12 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 gap-2 mt-auto">
+                    <div class="grid grid-cols-3 gap-2 mt-auto">
                         <button onclick="volverALlamar()" class="py-3 bg-orange-50 text-orange-600 border border-orange-100 rounded-lg font-bold text-xs hover:bg-orange-100">
                             🔊 RE-LLAMAR
+                        </button>
+                        <button onclick="marcarAusente()" class="py-3 bg-red-50 text-red-600 border border-red-100 rounded-lg font-bold text-xs hover:bg-red-100">
+                            🚫 NO SE PRESENTÓ
                         </button>
                         <button onclick="mostrarDerivacion()" class="py-3 bg-purple-50 text-purple-600 border border-purple-100 rounded-lg font-bold text-xs hover:bg-purple-100">
                             ↗ DERIVAR
@@ -220,7 +223,7 @@
 
             if (data.success && data.ticket) {
                 console.log("Recuperando ticket:", data.ticket.codigo);
-                const fechaBase = data.ticket.actualizadoEn || data.ticket.creadoEn;
+                const fechaBase = data.ticket.llamadoEn || data.ticket.creadoEn;
                 const inicio = new Date(fechaBase).getTime();
                 const ahora = new Date().getTime();
                 let diffSegundos = 0;
@@ -317,7 +320,7 @@
             
             if(data.success) {
                 if(data.restored) {
-                    const fechaBase = data.ticket.actualizadoEn || data.ticket.creadoEn;
+                const fechaBase = data.ticket.llamadoEn || data.ticket.creadoEn;
                     const inicio = new Date(fechaBase).getTime();
                     let diff = Math.floor((new Date().getTime() - inicio) / 1000);
                     if(diff < 0) diff = 0;
@@ -347,6 +350,19 @@
         } catch(e) { alert("Error de conexión"); }
     }
 
+    async function marcarAusente() {
+        if(!confirm("¿El cliente no se presentó? El ticket se cerrará como 'No se presentó'.")) return;
+        try {
+            const res = await fetch('/api/tickets/ausente', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ ticketId: currentTicketId, usuarioId: currentUser._id })
+            });
+            if(res.ok) mostrarEstadoLibre();
+            else { const d = await res.json(); alert(d.msg || 'Error'); }
+        } catch(e) { alert("Error de conexión"); }
+    }
+
     async function volverALlamar() {
         const btn = document.querySelector('button[onclick="volverALlamar()"]');
         btn.disabled = true; btn.classList.add('opacity-50');
@@ -357,21 +373,24 @@
         });
 
         if(timerInterval) clearInterval(timerInterval);
+        secondsElapsed = 0;
         const display = document.getElementById('timerDisplay');
-        const savedTime = display.textContent;
         display.textContent = "LLEGANDO...";
         display.classList.add('blink');
         
         setTimeout(() => {
             display.classList.remove('blink');
-            display.textContent = savedTime;
-            startTimer(); 
-        }, 5000);
+            secondsElapsed = 0;
+            actualizarRelojVisual();
+            startTimer();
+        }, 10000);
         setTimeout(() => { btn.disabled = false; btn.classList.remove('opacity-50'); }, 1000);
     }
 
     function startSessionUI(ticket, segundosIniciales) {
         currentTicketId = ticket._id;
+        
+        if (timerInterval) clearInterval(timerInterval);
         
         document.getElementById('stateWaiting').classList.add('hidden');
         document.getElementById('stateWaiting').classList.remove('flex');
@@ -391,23 +410,26 @@
             document.getElementById('prioBadge').classList.add('hidden');
         }
 
-        secondsElapsed = segundosIniciales;
-        actualizarRelojVisual();
-        
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            secondsElapsed++;
+        if(segundosIniciales >= 5) {
+            secondsElapsed = segundosIniciales;
             actualizarRelojVisual();
-        }, 1000);
-        
-        if(segundosIniciales < 5) {
+            timerInterval = setInterval(() => {
+                secondsElapsed++;
+                actualizarRelojVisual();
+            }, 1000);
+        } else {
             const tDisplay = document.getElementById('timerDisplay');
-            tDisplay.textContent = "LLEGANDO..."; 
+            tDisplay.textContent = "LLEGANDO...";
             tDisplay.classList.add('blink');
-            setTimeout(() => { 
-                tDisplay.classList.remove('blink'); 
-                actualizarRelojVisual(); 
-            }, 4000);
+            setTimeout(() => {
+                tDisplay.classList.remove('blink');
+                secondsElapsed = 0;
+                actualizarRelojVisual();
+                timerInterval = setInterval(() => {
+                    secondsElapsed++;
+                    actualizarRelojVisual();
+                }, 1000);
+            }, 10000);
         }
     }
 

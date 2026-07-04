@@ -83,7 +83,7 @@ exports.llamarTicket = async (req, res) => {
             const tiposDeEsteNivel = skillsOrdenadas.filter(s => s.prioridad === nivelPrioridad).map(s => s.tipo);
             siguienteTicket = await Ticket.findOneAndUpdate(
                 { sucursal: sucursalId, estado: 'pendiente', tipoTramite: { $in: tiposDeEsteNivel } },
-                { estado: 'atendiendo', ventanillaAtendio: usuarioId, llamadoEn: now, ventanillaNumero: ventanilla },
+                { estado: 'atendiendo', ventanillaAtendio: usuarioId, llamadoEn: new Date(Date.now() + 10000), ventanillaNumero: ventanilla },
                 { sort: { esPrioritario: -1, creadoEn: 1 }, new: true } 
             );
 
@@ -124,6 +124,9 @@ exports.volverALlamar = async (req, res) => {
         }).sort({ llamadoEn: -1 });
 
         if (!ticketActual) return res.status(404).json({ success: false, msg: 'No tienes ticket activo.' });
+
+        ticketActual.llamadoEn = new Date(Date.now() + 10000);
+        await ticketActual.save();
 
         const io = req.app.get('io');
         if (io) io.to(sucursalId).emit('ticket_llamado', ticketActual);
@@ -301,7 +304,7 @@ exports.atenderDerivado = async (req, res) => {
 exports.buscarHistorial = async (req, res) => {
     try {
         const { sucursalId } = req.params;
-        const { busqueda, fechaInicio, fechaFin } = req.query;
+        const { busqueda, fechaInicio, fechaFin, pagina, limite } = req.query;
 
         let start = new Date(); start.setHours(0,0,0,0);
         let end = new Date(); end.setHours(23,59,59,999);
@@ -333,13 +336,21 @@ exports.buscarHistorial = async (req, res) => {
             ];
         }
 
-        const registros = await Ticket.find(filtro)
-            .populate('ventanillaAtendio', 'nombre rol')
-            .populate('derivadoPor', 'nombre')
-            .sort({ creadoEn: -1 })
-            .limit(200);
+        const page = parseInt(pagina) || 1;
+        const limit = parseInt(limite) || 10;
+        const skip = (page - 1) * limit;
 
-        res.json(registros);
+        const [registros, total] = await Promise.all([
+            Ticket.find(filtro)
+                .populate('ventanillaAtendio', 'nombre rol')
+                .populate('derivadoPor', 'nombre')
+                .sort({ creadoEn: -1 })
+                .skip(skip)
+                .limit(limit),
+            Ticket.countDocuments(filtro)
+        ]);
+
+        res.json({ registros, total, pagina: page, limite: limit, totalPaginas: Math.ceil(total / limit) });
 
     } catch (e) { 
         console.error(e);
@@ -362,6 +373,41 @@ exports.obtenerTicketActivo = async (req, res) => {
         }
     } catch (error) {
         console.error("Error al buscar ticket activo:", error);
+        res.status(500).json({ success: false, msg: 'Error de servidor' });
+    }
+};
+
+exports.marcarAusente = async (req, res) => {
+    try {
+        const { ticketId, usuarioId } = req.body;
+
+        const ticket = await Ticket.findOneAndUpdate(
+            { _id: ticketId, ventanillaAtendio: usuarioId, estado: 'atendiendo' },
+            {
+                estado: 'ausente',
+                finalizadoEn: new Date(),
+                tiempoTotalAtencion: 0,
+                notasAtencion: 'No se presentó'
+            },
+            { new: true }
+        );
+
+        if (!ticket) return res.status(404).json({ success: false, msg: 'Ticket no encontrado o ya fue procesado.' });
+
+        await Usuario.findByIdAndUpdate(usuarioId, {
+            estado: 'disponible',
+            $unset: { ticket: '' }
+        });
+
+        const io = req.app.get('io');
+        if (io) {
+            io.to(ticket.sucursal.toString()).emit('ticket_finalizado', ticket);
+            io.to(ticket.sucursal.toString()).emit('cola_actualizada');
+        }
+
+        res.json({ success: true, ticket });
+    } catch (error) {
+        console.error("Error al marcar ausente:", error);
         res.status(500).json({ success: false, msg: 'Error de servidor' });
     }
 };
