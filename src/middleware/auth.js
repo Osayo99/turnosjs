@@ -13,8 +13,11 @@ const verificarToken = (req, res, next) => {
     }
 
     try {
-        // Verificamos el token usando la misma clave secreta que en el login
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'anda_super_secret_key_2026');
+        if (!process.env.JWT_SECRET) {
+            console.error('JWT_SECRET no está definido en .env');
+            return res.status(500).json({ msg: 'Error de configuración del servidor.' });
+        }
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
         
         // Inyectamos los datos del usuario decodificados en la petición actual
         // Así, cualquier controlador que se ejecute después, sabrá quién es req.usuario

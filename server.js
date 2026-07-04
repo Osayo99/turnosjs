@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ quiet: true });
 const express = require('express');
 const cookieParser = require('cookie-parser');
 const http = require('http');
@@ -8,17 +8,25 @@ const connectDB = require('./src/config/db');
 const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
+const mongoose = require('mongoose');
 const Sucursal = require('./src/models/Sucursal');
 const { initCronJobs } = require('./src/services/cronService');
+const { verificarToken, verificarRol } = require('./src/middleware/auth');
 
-// 1. Inicialización
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Promesa rechazada no manejada:', reason?.message || reason);
+});
+process.on('uncaughtException', (err) => {
+    console.error('Excepción no capturada:', err?.message || err);
+});
+
 const app = express();
 const server = http.createServer(app);
 
 // 2. Configuración de WebSockets (Socket.io)
 const io = new Server(server, {
     cors: {
-        origin: "*", // En producción real, cambia "*" por la IP o dominio de tu frontend
+        origin: process.env.CORS_ORIGIN || '*',
         methods: ["GET", "POST"]
     }
 });
@@ -27,18 +35,20 @@ const io = new Server(server, {
 app.set('io', io);
 
 io.on('connection', (socket) => {
-    console.log(`⚡ Cliente conectado: ${socket.id}`);
+    console.log(`Cliente conectado: ${socket.id}`);
     
-    socket.on('unirse_sucursal', (sucursalId) => {
-        if(sucursalId) {
-            socket.join(sucursalId);
-            console.log(`Socket ${socket.id} se unió a la sucursal: ${sucursalId}`);
+    socket.on('unirse_sucursal', async (sucursalId) => {
+        if (sucursalId && mongoose.Types.ObjectId.isValid(sucursalId)) {
+            const existe = await Sucursal.findById(sucursalId);
+            if (existe) {
+                socket.join(sucursalId);
+            }
         }
     });
 
     socket.on('disconnect', () => {
         // Limpiamos el log para no saturar la consola, mantenemos tracking
-        console.log(`❌ Cliente desconectado: ${socket.id}`);
+        console.log(`Cliente desconectado: ${socket.id}`);
     });
 });
 
@@ -48,14 +58,14 @@ connectDB();
 
 // 4. Middlewares de Express (¡El orden es vital!)
 app.use(cors());
-app.use(express.json({ limit: '5mb' })); // Limitar el tamaño del body (JSON) para evitar sobrecarga de memoria
+app.use(express.json({ limit: process.env.MAX_BODY_SIZE || '5mb' }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // 5. Configuración Segura de Multer (Subida de Videos)
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const dir = './public/uploads';
+        const dir = process.env.UPLOAD_DIR || './public/uploads';
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir, { recursive: true });
         }
@@ -71,7 +81,7 @@ const storage = multer.diskStorage({
 // Limitar subida estricta a 50MB y forzar a que solo sea MP4
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+    limits: { fileSize: parseInt(process.env.MAX_UPLOAD_SIZE) || 50 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'video/mp4') {
             cb(null, true);
@@ -83,10 +93,10 @@ const upload = multer({
 
 // 6. Rutas de la API
 app.get('/', (req, res) => {
-    res.send('API Sistema de Turnos ANDA - Lista para Producción 🚀');
+    res.send('API Sistema de Turnos ANDA - Lista para Producción');
 });
 
-app.post('/api/upload-video', upload.single('videoFile'), async (req, res, next) => {
+app.post('/api/upload-video', verificarToken, verificarRol(['jefe_sucursal', 'super_admin']), upload.single('videoFile'), async (req, res, next) => {
     try {
         if (!req.file) return res.status(400).json({ success: false, msg: 'No se subió ningún archivo o formato inválido.' });
 
@@ -113,7 +123,7 @@ app.use('/api/guias', require('./src/routes/guias'));
 // 7. MIDDLEWARE GLOBAL DE MANEJO DE ERRORES (El escudo final)
 // Si cualquier ruta falla internamente y rompe el código, cae aquí como red de seguridad
 app.use((err, req, res, next) => {
-    console.error('🔥 Error Crítico Capturado:', err.message || err);
+    console.error('Error Crítico Capturado:', err.message || err);
     
     // Interceptar errores de Multer (ej. archivo muy grande)
     if (err instanceof multer.MulterError) {
@@ -130,8 +140,8 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
     console.log(`\n=================================================`);
-    console.log(`🚀 Servidor ANDA corriendo en http://localhost:${PORT}`);
-    console.log(`🛡️  Modo: Producción / Optimizaciones Activas`);
-    console.log(`📡 WebSockets listos y asegurados`);
+    console.log(`Servidor ANDA corriendo en http://localhost:${PORT}`);
+    console.log(`Modo: Produccion / Optimizaciones Activas`);
+    console.log(`WebSockets listos y asegurados`);
     console.log(`=================================================\n`);
 });

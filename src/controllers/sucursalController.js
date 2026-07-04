@@ -1,4 +1,6 @@
 const Sucursal = require('../models/Sucursal');
+const Ticket = require('../models/Ticket');
+const Usuario = require('../models/Usuario');
 
 // Controlador para la gestión de sucursales (Admin y Jefatura)
 

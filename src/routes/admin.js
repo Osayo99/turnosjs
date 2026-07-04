@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const adminController = require('../controllers/adminController');
+const { verificarToken, verificarRol } = require('../middleware/auth');
 
-router.get('/global-data', adminController.getDataGlobal);
-router.get('/sucursal/:sucursalId', adminController.detallesSucursal); 
-router.post('/eliminar-usuario', adminController.eliminarUsuario);
-router.post('/crear-usuario', adminController.crearUsuarioAdmin); 
-router.post('/config-export', adminController.configurarExportacion);
-router.put('/editar-usuario', adminController.editarUsuario);
+router.get('/global-data', verificarToken, verificarRol(['super_admin']), adminController.getDataGlobal);
+router.get('/sucursal/:sucursalId', verificarToken, verificarRol(['super_admin']), adminController.detallesSucursal); 
+router.post('/crear-usuario', verificarToken, verificarRol(['super_admin']), adminController.crearUsuarioAdmin); 
+router.put('/editar-usuario', verificarToken, verificarRol(['super_admin']), adminController.editarUsuario);
+router.delete('/eliminar-usuario/:id', verificarToken, verificarRol(['super_admin']), adminController.eliminarUsuario);
+router.post('/config-export', verificarToken, verificarRol(['super_admin']), adminController.configurarExportacion);
 
 module.exports = router;

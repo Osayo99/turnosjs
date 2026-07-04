@@ -86,7 +86,7 @@ exports.llamarTicket = async (req, res) => {
             const tiposDeEsteNivel = skillsOrdenadas.filter(s => s.prioridad === nivelPrioridad).map(s => s.tipo);
             siguienteTicket = await Ticket.findOneAndUpdate(
                 { sucursal: sucursalId, estado: 'pendiente', tipoTramite: { $in: tiposDeEsteNivel } },
-                { estado: 'atendiendo', ventanillaAtendio: usuarioId, llamadoEn: now, actualizadoEn: now, ventanillaNumero: ventanilla },
+                { estado: 'atendiendo', ventanillaAtendio: usuarioId, llamadoEn: now, ventanillaNumero: ventanilla },
                 { sort: { esPrioritario: -1, creadoEn: 1 }, new: true } 
             );
 

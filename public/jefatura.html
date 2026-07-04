@@ -115,15 +115,18 @@
             </div>
             <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200">
                 <h3 class="font-bold text-gray-700 mb-4 flex items-center gap-2"><span>➕</span> Nuevo Ejecutivo</h3>
-                <div class="space-y-3">
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="text" id="newEjecName" placeholder="Nombre" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
-                        <input type="text" id="newEjecUser" placeholder="Usuario" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
-                    </div>
-                    <div class="grid grid-cols-2 gap-3">
-                        <input type="password" id="newEjecPass" placeholder="Clave" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
-                        <input type="number" id="newEjecVent" placeholder="Ventanilla N°" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
-                    </div>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" id="newEjecName" placeholder="Nombre" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                            <input type="text" id="newEjecUser" placeholder="Usuario" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="text" id="newEjecCodigo" placeholder="Codigo Empleado" pattern="[0-9]{5}" maxlength="5" title="Deben ser 5 digitos numericos (00001-99999)" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                            <input type="password" id="newEjecPass" placeholder="Clave" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <input type="number" id="newEjecVent" placeholder="Ventanilla N°" class="w-full p-2 rounded border border-gray-300 text-sm outline-none focus:border-green-500">
+                        </div>
                     <button onclick="crearEjecutivo()" class="w-full bg-green-600 text-white font-bold py-2 rounded-xl shadow hover:bg-green-500 active:scale-95 text-sm">CREAR</button>
                 </div>
             </div>
@@ -182,8 +185,16 @@
                 </div>
             </div>
 
-            <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Ventanilla N°</label>
-            <input type="number" id="editUserVent" class="w-full p-2 border rounded-lg mb-4 text-sm outline-none focus:border-blue-500">
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Código Empleado</label>
+                    <input type="text" id="editUserCodigo" pattern="[0-9]{5}" maxlength="5" title="Deben ser 5 digitos numericos (00001-99999)" class="w-full p-2 border rounded-lg text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Ventanilla N°</label>
+                    <input type="number" id="editUserVent" class="w-full p-2 border rounded-lg text-sm outline-none focus:border-blue-500">
+                </div>
+            </div>
 
             <label class="block text-xs font-bold text-gray-400 uppercase mb-1">Configuración de Prioridades</label>
             <p class="text-[10px] text-gray-400 mb-2">Seleccione prioridad (1 es más alta). Deje en "No atiende" para bloquear.</p>
@@ -377,6 +388,7 @@
             document.getElementById('editUserId').value = u._id; 
             document.getElementById('editUserNombre').value = u.nombre; 
             document.getElementById('editUserUsername').value = u.username; 
+            document.getElementById('editUserCodigo').value = u.codigoEmpleado || ''; 
             document.getElementById('editUserVent').value = u.numeroVentanilla || 0; 
             
             const tiposPosibles = ['PAGOS', 'CONSULTAS', 'RECLAMOS', 'NUEVOS'];
@@ -404,9 +416,11 @@
             const id = document.getElementById('editUserId').value; 
             const nombre = document.getElementById('editUserNombre').value;
             const username = document.getElementById('editUserUsername').value;
+            const codigoEmpleado = document.getElementById('editUserCodigo').value;
             const ventanilla = document.getElementById('editUserVent').value; 
             
-            if(!nombre || !username) return alert("⚠️ Nombre y Usuario son obligatorios");
+            if(!nombre || !username || !codigoEmpleado) return alert("Nombre, Usuario y Codigo Empleado son obligatorios");
+            if(!/^\d{5}$/.test(codigoEmpleado)) return alert("El codigo de empleado debe ser numerico de 5 digitos (00001-99999)");
 
             const selects = document.querySelectorAll('.skill-selector');
             const skills = [];
@@ -420,24 +434,24 @@
 
             try { 
                 const res = await fetch('/api/usuarios/actualizar', { 
-                    method: 'POST', 
+                    method: 'PUT', 
                     headers: {'Content-Type':'application/json'}, 
-                    body: JSON.stringify({ id, nombre, username, skills, numeroVentanilla: ventanilla }) 
+                    body: JSON.stringify({ id, nombre, username, codigoEmpleado, skills, numeroVentanilla: ventanilla }) 
                 }); 
                 
                 const data = await res.json();
                 if(data.success) { 
-                    alert("✅ Usuario actualizado"); 
+                    alert("Usuario actualizado"); 
                     document.getElementById('modalEditarUsuario').classList.add('hidden'); 
                     cargarPersonal(); 
                 } else {
-                    alert("❌ " + (data.msg || "Error al actualizar")); 
+                    alert(" " + (data.msg || "Error al actualizar")); 
                 }
             } catch(e) { alert("Error de conexión"); } 
         }
 
         async function eliminarEjecutivo(id, nombre) {
-            if(confirm(`⚠️ ¿Estás seguro de eliminar al usuario ${nombre}?`)) {
+            if(confirm("¿Estas seguro de eliminar al usuario ${nombre}?")) {
                 try {
                     const res = await fetch(`/api/usuarios/${id}`, { method: 'DELETE' });
                     const data = await res.json();
@@ -446,10 +460,10 @@
                         alert("✅ Usuario eliminado exitosamente");
                         cargarPersonal();
                     } else {
-                        alert("❌ " + (data.msg || "Error al eliminar usuario"));
+                        alert(" " + (data.msg || "Error al eliminar usuario"));
                     }
                 } catch(e) {
-                    alert("❌ Error de comunicación con el servidor");
+                    alert(" Error de comunicación con el servidor");
                 }
             }
         }
@@ -458,7 +472,7 @@
             const input = document.getElementById('videoInput');
             const f = input.files[0]; 
             
-            if(!f) return alert("⚠️ Por favor, seleccione un archivo de video primero.");
+            if(!f) return alert("Por favor, seleccione un archivo de video primero.");
 
             const btn = document.getElementById('btnSubirVideo');
             const progressContainer = document.getElementById('progressContainer');
@@ -500,27 +514,27 @@
                                 progressText.classList.add('hidden');
                             }, 1000);
                         } else {
-                            alert("❌ Error: " + (data.msg || "No se pudo subir."));
+                            alert(" Error: " + (data.msg || "No se pudo subir."));
                         }
                     } catch(e) {
                         alert("✅ Subido (El servidor no devolvió JSON).");
                     }
                 } else {
-                    alert("❌ Error del servidor al intentar subir el archivo.");
+                    alert(" Error del servidor al intentar subir el archivo.");
                 }
             });
             xhr.addEventListener("error", () => {
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
                 btn.textContent = "SUBIR VIDEO";
-                alert("❌ Error de conexión al servidor.");
+                alert(" Error de conexión al servidor.");
             });
             xhr.open("POST", "/api/upload-video", true);
             xhr.send(fd);
         }
         
-        async function crearEjecutivo() { const n=document.getElementById('newEjecName').value, u=document.getElementById('newEjecUser').value, p=document.getElementById('newEjecPass').value, v=document.getElementById('newEjecVent').value; if(!n||!u||!p||!v)return alert("Datos incompletos"); try{ const res=await fetch('/api/usuarios/crear', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({nombre:n, username:u, password:p, sucursalId, rol:'ejecutivo', numeroVentanilla:v, skills:[]})}); if((await res.json()).success){ alert("Creado"); cargarPersonal(); document.getElementById('newEjecName').value=''; document.getElementById('newEjecUser').value=''; document.getElementById('newEjecPass').value=''; document.getElementById('newEjecVent').value=''; } else alert("Error"); }catch(e){alert("Error");} }
-        async function resetearPassword(id, n) { const p=prompt(`Nueva clave para ${n}:`); if(p) fetch('/api/usuarios/admin-reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetUserId:id, nuevaPassword:p})}).then(r=>r.ok?alert("OK"):alert("Error")); }
+        async function crearEjecutivo() { const n=document.getElementById('newEjecName').value, u=document.getElementById('newEjecUser').value, c=document.getElementById('newEjecCodigo').value, p=document.getElementById('newEjecPass').value, v=document.getElementById('newEjecVent').value; if(!n||!u||!c||!p||!v)return alert("Datos incompletos"); if(!/^\d{5}$/.test(c))return alert("El codigo de empleado debe ser numerico de 5 digitos"); try{ const res=await fetch('/api/usuarios/crear', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({codigoEmpleado:c, nombre:n, username:u, password:p, sucursalId, rol:'ejecutivo', numeroVentanilla:v, skills:[]})}); if((await res.json()).success){ alert("Creado"); cargarPersonal(); document.getElementById('newEjecName').value=''; document.getElementById('newEjecUser').value=''; document.getElementById('newEjecCodigo').value=''; document.getElementById('newEjecPass').value=''; document.getElementById('newEjecVent').value=''; } else alert("Error"); }catch(e){alert("Error");} }
+        async function resetearPassword(id, n) { const p=prompt(`Nueva clave para ${n}:`); if(p) fetch('/api/usuarios/admin-reset-password',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify({targetUserId:id, nuevaPassword:p})}).then(r=>r.ok?alert("OK"):alert("Error")); }
         function abrirModalCambioClave(){document.getElementById('modalCambioClave').classList.remove('hidden');}
         async function guardarMiClave(){ const o=document.getElementById('ownPassOld').value, n=document.getElementById('ownPassNew').value; if(o&&n) fetch('/api/usuarios/cambiar-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({usuarioId:currentUser._id, actual:o, nueva:n})}).then(r=>r.json()).then(d=>d.success?(alert("OK"),document.getElementById('modalCambioClave').classList.add('hidden')):alert(d.msg)); }
         async function iniciarAtencionJefe(i,c,t,d){if(confirm("¿Atender?")){fetch('/api/tickets/atender-derivado',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ticketId:i,usuarioId:currentUser._id})}); currentTicketId=i; document.getElementById('viewDashboard').classList.add('hidden'); document.getElementById('viewWorkspace').classList.remove('hidden'); document.getElementById('wkTicketCodigo').textContent=c; document.getElementById('wkTicketTipo').textContent=t; document.getElementById('wkDui').textContent=`DUI: ${d}`; secondsElapsed=0; if(timerInterval)clearInterval(timerInterval); timerInterval=setInterval(()=>{secondsElapsed++;document.getElementById('wkTimer').textContent=new Date(secondsElapsed*1000).toISOString().substr(14,5)},1000);}}

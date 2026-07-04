@@ -22,6 +22,7 @@ Exportacion a Google Sheets: Los tickets finalizados se envian automaticamente a
 Antes de comenzar, asegurese de contar con lo siguiente:
 
 * Un servidor con Ubuntu 22.04 LTS o superior.
+* Node.js v22.x o superior.
 * Acceso a la terminal con privilegios de sudo.
 * El repositorio del proyecto disponible (Git o archivo comprimido).
 * Una cuenta de Google para configurar Google Apps Script.
@@ -34,8 +35,9 @@ Antes de comenzar, asegurese de contar con lo siguiente:
 4 - Clonar el repositorio e instalar dependencias del proyecto
 5 - Configurar variables de entorno
 6 - Crear el usuario Super Admin
-7 - Configurar PM2 para ejecucion en produccion
-9 - Configuracion de Google Sheets
+7 - Poblacion de datos de prueba (opcional)
+8 - Configurar PM2 para ejecucion en produccion
+9 - Integracion con Google Sheets
 
 # 1 - Actualizar el Servidor
 Conectese al servidor via SSH y ejecute:
@@ -48,7 +50,7 @@ sudo apt install -y git curl
 # 2 - Instalar Node.js
 
 ```bash
-curl -fsSL [https://deb.nodesource.com/setup_18.x](https://deb.nodesource.com/setup_18.x) | sudo -E bash -
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
 ```
 
@@ -79,14 +81,37 @@ Cree un archivo .env en la raíz del proyecto:
 nano .env
 ```
 
-Agregue las siguientes lineas al archivo:
-- development para pruebas sobre HTTP
-- production para produccion solo HTTPS
+Agregue las siguientes lineas al archivo (reemplace los valores segun corresponda):
+- `development` para pruebas sobre HTTP
+- `production` para produccion solo HTTPS
 
 ```bash
+# PUERTO
 PORT=3000
-JWT_SECRET=clave_secreta_aqui
+
+# BASE DE DATOS
 MONGO_URI=mongodb://127.0.0.1:27017/anda_turnos
+DB_MAX_RETRIES=3
+DB_RETRY_DELAY=3000
+
+# SEGURIDAD
+JWT_SECRET=clave_secreta_aqui
+CORS_ORIGIN=*
+
+# SUBIDA DE ARCHIVOS
+MAX_BODY_SIZE=5mb
+MAX_UPLOAD_SIZE=52428800
+UPLOAD_DIR=./public/uploads
+
+# RATE LIMITING
+RATE_LIMIT_WINDOW=60000
+RATE_LIMIT_MAX=10
+
+# ADMIN POR DEFECTO
+ADMIN_USERNAME=superanda
+ADMIN_PASSWORD=123
+
+# ENTORNO
 NODE_ENV=development
 ```
 
@@ -101,8 +126,20 @@ Esto creará un usuario administrador por defecto, asegurese de cambiar la clave
 Usuario: superanda
 Clave: 123
 
-# 7 - Ejecutar en Producción con PM2
+# 7 - Poblar la Base de Datos con Datos de Prueba (Opcional)
+Si desea poblar la base de datos con sucursales, usuarios, tickets y guias de ejemplo, ejecute:
+
+```bash
+node seed.js
+```
+
+Esto crea 3 sucursales, 11 usuarios (1 super admin, 3 jefes, 7 ejecutivos de ventanilla), 15 tickets y 4 guias.
+Cada usuario se crea con un `codigoEmpleado` unico de 5 digitos (ej. 00001, 00002, ... 00011).
+Todos los usuarios de prueba tienen clave `123`.
+
+# 8 - Ejecutar en Producción con PM2
 Se recomienda usar PM2 para mantener la aplicación corriendo en segundo plano, esto se ejecuta en la raiz del proyecto:
+
 ```bash
 sudo npm install -g pm2
 pm2 start server.js --name "anda-turnos"
@@ -110,7 +147,15 @@ pm2 save
 pm2 startup
 ```
 
-# 8 - Integración con Google Sheets
+Para verificar que el servicio funciona correctamente, ejecute el suite de pruebas:
+
+```bash
+bash test_api.sh
+```
+
+Todas las pruebas deben pasar (48 tests, 0 fallos).
+
+# 9 - Integración con Google Sheets
 El sistema permite exportar automáticamente los tickets finalizados a una hoja de cálculo de Google Sheets.
 
 ## 1. Preparar la Hoja de Cálculo
@@ -141,7 +186,7 @@ Copie la URL de la aplicación web generada (termina en /exec).
 
 ## 4. Configurar en el Panel Admin
 Inicie sesión en la aplicación como Super Admin (/admin.html).
-En la lista de sucursales, haga clic en el icono de gráfico (📊).
+En la lista de sucursales, haga clic en el icono de grafico.
 <img width="835" height="382" alt="image" src="https://github.com/user-attachments/assets/12ade0a3-c9ab-4d88-abcc-4393c421bedb" />
 
 Pegue la URL de Google Apps Script en el campo de Webhook.

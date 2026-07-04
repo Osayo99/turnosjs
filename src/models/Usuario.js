@@ -4,6 +4,12 @@ const bcrypt = require('bcryptjs');
 // Esquema para la colección de usuarios
 
 const UsuarioSchema = new mongoose.Schema({
+    codigoEmpleado: { 
+        type: String, 
+        required: true, 
+        unique: true,
+        match: [/^\d{5}$/, 'El codigo de empleado debe ser numerico de 5 digitos (00001-99999)']
+    },
     nombre: { type: String, required: true },
     username: { type: String, required: true, unique: true },
     password: { type: String, required: true },

@@ -2,15 +2,24 @@ const mongoose = require('mongoose');
 const Sucursal = require('../models/Sucursal'); 
 const { initCronJobs } = require('../services/cronService');
 
-const connectDB = async () => {
+const MAX_RETRIES = parseInt(process.env.DB_MAX_RETRIES) || 3;
+const RETRY_DELAY = parseInt(process.env.DB_RETRY_DELAY) || 3000;
+
+const connectDB = async (retryCount = 0) => {
     try {
-        // Conexión local a MongoDB. Si no existe la DB 'anda_turnos', Mongo la crea sola.
-        await mongoose.connect('mongodb://127.0.0.1:27017/anda_turnos');
-        console.log('✅ MongoDB Conectado Exitosamente');
+        const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/anda_turnos';
+        await mongoose.connect(uri);
+        console.log('MongoDB Conectado Exitosamente');
         initCronJobs();
     } catch (error) {
-        console.error('❌ Error de conexión a MongoDB:', error);
-        process.exit(1); // Detener la app si no hay base de datos
+        console.error(`Error de conexión a MongoDB (intento ${retryCount + 1}/${MAX_RETRIES}):`, error.message);
+        if (retryCount < MAX_RETRIES - 1) {
+            console.log(`Reintentando en ${RETRY_DELAY / 1000}s...`);
+            await new Promise(resolve => setTimeout(resolve, RETRY_DELAY));
+            return connectDB(retryCount + 1);
+        }
+        console.error('No se pudo conectar a MongoDB después de varios intentos.');
+        process.exit(1);
     }
 };
 

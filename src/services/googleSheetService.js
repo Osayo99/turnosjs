@@ -5,7 +5,8 @@ const exportarSucursal = async (sucursalId) => {
     try {
         const sucursal = await Sucursal.findById(sucursalId);
         
-        if (!sucursal || !sucursal.googleSheetId || !sucursal.googleSheetId.startsWith('http')) {
+        if (!sucursal || !sucursal.googleSheetId || !sucursal.googleSheetId.startsWith('https://script.google.com/')) {
+            console.warn(`[Export] Sucursal ${sucursalId}: URL de Google Sheets inválida o no segura.`);
             return; 
         }
 
@@ -16,7 +17,7 @@ const exportarSucursal = async (sucursalId) => {
         }
 
         const tickets = await Ticket.find(filtro)
-            .populate('ventanillaAtendio', 'nombre')
+            .populate('ventanillaAtendio', 'nombre codigoEmpleado')
             .populate('derivadoPor', 'nombre')
             .sort({ finalizadoEn: 1 });
 
@@ -34,11 +35,12 @@ const exportarSucursal = async (sucursalId) => {
             t.finalizadoEn.toLocaleString('es-SV'), 
             convertirSegundos(t.tiempoTotalAtencion),
             t.ventanillaAtendio?.nombre || 'N/A',
+            `'${t.ventanillaAtendio?.codigoEmpleado || 'N/A'}`,
             t.notasAtencion || '',
             t.derivadoPor ? `Derivado: ${t.motivoDerivacion}` : 'No'
         ]);
 
-        console.log(`📤 [Export] Intentando enviar ${tickets.length} tickets a Google Sheets...`);
+        console.log(`[Export] Intentando enviar ${tickets.length} tickets a Google Sheets...`);
 
         const response = await fetch(sucursal.googleSheetId, {
             method: 'POST',
@@ -55,21 +57,21 @@ const exportarSucursal = async (sucursalId) => {
         try {
             resultado = JSON.parse(responseText);
         } catch (parseError) {
-            console.error(`❌ [Export Error] Google no devolvió un JSON válido.`);
-            console.error(`🔍 [Debug] Respuesta recibida (primeros 150 caracteres):`, responseText.substring(0, 150));
+            console.error(`[Export Error] Google no devolvió un JSON válido.`);
+            console.error(`[Debug] Respuesta recibida (primeros 150 caracteres):`, responseText.substring(0, 150));
             return;
         }
 
         if (resultado.status === 'success') {
             sucursal.ultimaExportacion = new Date();
             await sucursal.save();
-            console.log(`✅ [Export] ${sucursal.nombre}: ${tickets.length} tickets enviados y procesados correctamente.`);
+            console.log(`[Export] ${sucursal.nombre}: ${tickets.length} tickets enviados y procesados correctamente.`);
         } else {
-            console.error(`❌ [Export Error] Google procesó la petición pero rechazó los datos:`, resultado);
+            console.error(`[Export Error] Google procesó la petición pero rechazó los datos:`, resultado);
         }
 
     } catch (error) {
-        console.error(`❌ [Export Error] Sucursal ${sucursalId}:`, error.message);
+        console.error(`[Export Error] Sucursal ${sucursalId}:`, error.message);
     }
 };
 

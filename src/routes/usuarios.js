@@ -10,8 +10,8 @@ router.post('/cambiar-password', verificarToken, usuarioController.cambiarPasswo
 
 router.get('/sucursal/:sucursalId', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.listarPorSucursal);
 router.post('/crear', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.crearUsuario);
-router.post('/actualizar', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.actualizarUsuario);
-router.post('/admin-reset-password', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.adminResetPassword);
+router.put('/actualizar', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.actualizarUsuario);
+router.put('/admin-reset-password', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.adminResetPassword);
 router.delete('/:id', verificarToken, verificarRol(['super_admin', 'jefe_sucursal']), usuarioController.eliminarUsuarioJefe);
 
 router.get('/migrar-seguridad', verificarToken, verificarRol(['super_admin']), usuarioController.migrarPasswords);

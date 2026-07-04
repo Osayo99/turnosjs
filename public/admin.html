@@ -60,6 +60,7 @@
                             <select id="newJefeSucursal" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none"><option value="">Seleccione Sucursal...</option></select>
                             <input type="text" id="newJefeNombre" placeholder="Nombre Completo" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none">
                             <input type="text" id="newJefeUser" placeholder="Usuario" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none">
+                            <input type="text" id="newJefeCodigo" placeholder="Código Empleado" pattern="[0-9]{5}" maxlength="5" title="Deben ser 5 digitos numericos (00001-99999)" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none">
                             <input type="password" id="newJefePass" placeholder="Contraseña" class="bg-gray-900 p-3 rounded-xl border border-gray-600 text-sm text-white focus:border-green-500 outline-none">
                         </div>
                         <button onclick="crearJefe()" class="bg-green-600 hover:bg-green-500 text-white text-sm font-bold px-6 py-3 rounded-xl shadow-lg shadow-green-900/20 transition-transform active:scale-95 relative z-10">Crear Cuenta Jefe</button>
@@ -99,7 +100,7 @@
                             <div class="flex flex-col flex-grow"><label class="text-[9px] text-gray-500 font-bold uppercase ml-1">Búsqueda</label><div class="flex gap-2"><input type="text" id="searchBranchQuery" placeholder="Escriba para buscar..." class="bg-gray-800 border border-gray-600 rounded-lg px-3 py-1.5 text-sm text-white w-full md:w-64 outline-none focus:border-blue-500"><button onclick="buscarEnSucursal()" class="bg-blue-600 hover:bg-blue-500 text-white font-bold px-6 py-1.5 rounded-lg text-xs tracking-wider transition-colors shadow-lg shadow-blue-900/30">BUSCAR</button></div></div>
                         </div>
                     </div>
-                    <div class="overflow-x-auto rounded-xl border border-gray-700"><table class="w-full text-left text-sm text-gray-300"><thead class="bg-gray-900 text-xs uppercase font-bold text-blue-400"><tr><th class="p-4">Ticket</th><th class="p-4">Fecha</th><th class="p-4">Cliente / DUI</th><th class="p-4">Atendido Por</th><th class="p-4">Nota</th><th class="p-4 text-center">Tiempo</th><th class="p-4 text-right">Estado</th></tr></thead><tbody id="listaTicketsBranch" class="divide-y divide-gray-700 bg-gray-800/50"><tr><td colspan="6" class="p-12 text-center text-gray-500 italic">Seleccione filtros.</td></tr></tbody></table></div>
+                    <div class="overflow-x-auto rounded-xl border border-gray-700"><table class="w-full text-left text-sm text-gray-300"><thead class="bg-gray-900 text-xs uppercase font-bold text-blue-400"><tr><th class="p-4">Ticket</th><th class="p-4">Fecha</th><th class="p-4">Cliente / DUI</th><th class="p-4">Atendido Por</th><th class="p-4">Código Empleado</th><th class="p-4">Nota</th><th class="p-4 text-center">Tiempo</th><th class="p-4 text-right">Estado</th></tr></thead><tbody id="listaTicketsBranch" class="divide-y divide-gray-700 bg-gray-800/50"><tr><td colspan="8" class="p-12 text-center text-gray-500 italic">Seleccione filtros.</td></tr></tbody></table></div>
                 </div>
             </div>
         </div>
@@ -169,6 +170,10 @@
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Usuario</label>
                     <input type="text" id="editUserUsername" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Código Empleado</label>
+                    <input type="text" id="editUserCodigo" pattern="[0-9]{5}" maxlength="5" title="Deben ser 5 digitos numericos (00001-99999)" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-xl text-white text-sm outline-none focus:border-blue-500">
                 </div>
                 <div>
                     <label class="block text-xs text-gray-400 mb-1">Rol</label>
@@ -296,7 +301,8 @@
         }
 
         async function cargarGlobal() {
-            const r = await fetch('/api/admin/global-data'); 
+            const r = await fetch('/api/admin/global-data');
+            if (r.status === 401) { logout(); return; }
             const d = await r.json(); 
             
             allSucursalesCache = d.sucursales; 
@@ -358,7 +364,7 @@
             document.getElementById('guiaIdEdit').value = id;
             document.getElementById('guiaTitulo').value = titulo;
             document.getElementById('guiaContenido').value = contenido;
-            document.getElementById('modalGuiaTitle').textContent = "✏️ Editar Guía";
+            document.getElementById('modalGuiaTitle').textContent = "Editar Guia";
             document.getElementById('btnGuardarGuia').textContent = "Actualizar";
             document.getElementById('modalGuia').classList.remove('hidden');
         }
@@ -386,7 +392,7 @@
         }
 
         async function borrarGuia(id) { if(confirm('¿Borrar esta guía permanentemente?')) { await fetch(`/api/guias/${id}`, { method: 'DELETE' }); cargarGuiasAdmin(); } }
-        function escapeHtml(text) { if (!text) return ""; return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;").replace(/\n/g, "\\n"); }
+        function escapeHtml(text) { if (!text) return ""; return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
 
         function abrirModalCrearSucursal() { document.getElementById('modalNewSucursal').classList.remove('hidden'); }
         async function guardarNuevaSucursal() {
@@ -397,7 +403,7 @@
             try {
                 const res = await fetch('/api/sucursales', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ nombre, codigo, direccion }) });
                 const data = await res.json();
-                if(data._id) { alert("✅ Agencia creada exitosamente"); document.getElementById('modalNewSucursal').classList.add('hidden'); document.getElementById('crearSucName').value = ''; document.getElementById('crearSucCode').value = ''; document.getElementById('crearSucDir').value = ''; cargarGlobal(); } else { alert("Error al crear agencia"); }
+                if(data._id) { alert(" Agencia creada exitosamente"); document.getElementById('modalNewSucursal').classList.add('hidden'); document.getElementById('crearSucName').value = ''; document.getElementById('crearSucCode').value = ''; document.getElementById('crearSucDir').value = ''; cargarGlobal(); } else { alert("Error al crear agencia"); }
             } catch(e) { alert("Error de conexión"); }
         }
 
@@ -415,7 +421,7 @@
             const codigo = document.getElementById('editSucCode').value;
             const direccion = document.getElementById('editSucDir').value;
 
-            if(!nombre || !codigo) return alert("⚠️ El Nombre y Código son obligatorios");
+            if(!nombre || !codigo) return alert("El Nombre y Codigo son obligatorios");
 
             try {
                 const res = await fetch(`/api/sucursales/${id}`, { 
@@ -426,31 +432,31 @@
                 const data = await res.json();
                 
                 if(data.success) { 
-                    alert("✅ Agencia actualizada correctamente"); 
+                    alert(" Agencia actualizada correctamente"); 
                     document.getElementById('modalEditSucursal').classList.add('hidden'); 
                     cargarGlobal(); 
                 } else { 
-                    alert("❌ " + (data.msg || "Error al actualizar")); 
+                    alert(data.msg || "Error al actualizar"); 
                 }
             } catch(e) { 
-                alert("❌ Error de comunicación con el servidor"); 
+                alert("Error de comunicación con el servidor"); 
             }
         }
 
         async function eliminarSucursalFront(id) {
-            if(confirm('⚠️ ¿Estás completamente seguro de eliminar esta agencia?\n\nEsto podría afectar el historial si hay tickets enlazados a ella.')) {
+            if(confirm('¿Estas completamente seguro de eliminar esta agencia?\n\nEsto podria afectar el historial si hay tickets enlazados a ella.')) {
                 try {
                     const res = await fetch(`/api/sucursales/${id}`, { method: 'DELETE' });
                     const data = await res.json();
                     
                     if(data.success) {
-                        alert("✅ Agencia eliminada exitosamente");
+                        alert(" Agencia eliminada exitosamente");
                         cargarGlobal();
                     } else {
-                        alert("❌ " + (data.msg || "Error al eliminar la agencia"));
+                        alert(data.msg || "Error al eliminar la agencia");
                     }
                 } catch(e) {
-                    alert("❌ Error de comunicación con el servidor");
+                    alert("Error de comunicación con el servidor");
                 }
             }
         }
@@ -474,7 +480,7 @@
                             ${u.sucursal ? u.sucursal.nombre : 'Global'}
                         </td>
                         <td class="p-4 text-right flex justify-end gap-2">
-                            <button onclick="abrirModalEditarUsuario('${u._id}', '${u.nombre}', '${u.username}', '${u.rol}', '${u.sucursal ? u.sucursal._id : ''}')" class="text-blue-400 hover:text-white px-2 py-1 rounded text-xs font-bold" title="Editar Usuario">✏️</button>
+                            <button onclick="abrirModalEditarUsuario('${u._id}', '${u.nombre}', '${u.username}', '${u.rol}', '${u.sucursal ? u.sucursal._id : ''}', '${u.codigoEmpleado || ''}')" class="text-blue-400 hover:text-white px-2 py-1 rounded text-xs font-bold" title="Editar Usuario">✏️</button>
                             <button onclick="resetUserPass('${u._id}', '${u.nombre}')" class="text-yellow-400 hover:text-white px-2 py-1 rounded text-xs font-bold" title="Resetear Clave">🔑</button>
                             <button onclick="eliminar('${u._id}')" class="text-red-400 hover:text-white px-2 py-1 rounded text-xs font-bold" title="Eliminar Usuario">🗑️</button>
                         </td>
@@ -485,10 +491,11 @@
             }
         }
 
-        function abrirModalEditarUsuario(id, nombre, username, rol, sucursalId) {
+        function abrirModalEditarUsuario(id, nombre, username, rol, sucursalId, codigoEmpleado) {
             document.getElementById('editUserId').value = id;
             document.getElementById('editUserNombre').value = nombre;
             document.getElementById('editUserUsername').value = username;
+            document.getElementById('editUserCodigo').value = codigoEmpleado || '';
             document.getElementById('editUserRol').value = rol;
             
             const selSucursal = document.getElementById('editUserSucursal');
@@ -505,29 +512,31 @@
             const id = document.getElementById('editUserId').value;
             const nombre = document.getElementById('editUserNombre').value;
             const username = document.getElementById('editUserUsername').value;
+            const codigoEmpleado = document.getElementById('editUserCodigo').value;
             const rol = document.getElementById('editUserRol').value;
             const sucursalId = document.getElementById('editUserSucursal').value;
 
-            if(!nombre || !username) return alert("⚠️ Nombre y Usuario son obligatorios");
+            if(!nombre || !username || !codigoEmpleado) return alert("Nombre, Usuario y Codigo Empleado son obligatorios");
+            if(!/^\d{5}$/.test(codigoEmpleado)) return alert("El codigo de empleado debe ser numerico de 5 digitos (00001-99999)");
 
             try {
                 const r = await fetch('/api/admin/editar-usuario', {
                     method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ id, nombre, username, rol, sucursalId: sucursalId || null })
+                    body: JSON.stringify({ id, nombre, username, codigoEmpleado, rol, sucursalId: sucursalId || null })
                 });
                 
                 const d = await r.json();
                 
                 if(d.success) {
-                    alert("✅ " + d.msg);
+                    alert(" " + d.msg);
                     document.getElementById('modalEditUsuario').classList.add('hidden');
                     cargarGlobal();
                 } else {
-                    alert("❌ Falló: " + (d.msg || "Error desconocido."));
+                    alert("Falló: " + (d.msg || "Error desconocido."));
                 }
             } catch(e) {
-                alert("❌ Error de comunicación con el servidor.");
+                alert("Error de comunicación con el servidor.");
                 console.error(e);
             }
         }
@@ -536,11 +545,13 @@
             const s = document.getElementById('newJefeSucursal').value;
             const n = document.getElementById('newJefeNombre').value;
             const u = document.getElementById('newJefeUser').value;
+            const c = document.getElementById('newJefeCodigo').value;
             const p = document.getElementById('newJefePass').value; 
 
-            if (!s || !n || !u || !p) {
-                return alert("⚠️ Faltan datos por completar."); 
+            if (!s || !n || !u || !c || !p) {
+                return alert("Faltan datos por completar."); 
             }
+            if(!/^\d{5}$/.test(c)) return alert("El codigo de empleado debe ser numerico de 5 digitos (00001-99999)");
 
             try {
                 const r = await fetch('/api/admin/crear-usuario', {
@@ -550,6 +561,7 @@
                         sucursalId: s, 
                         nombre: n, 
                         username: u, 
+                        codigoEmpleado: c,
                         password: p, 
                         rol: 'jefe_sucursal' 
                     })
@@ -562,17 +574,18 @@
                 const d = await r.json(); 
 
                 if (d.success) {
-                    alert("✅ " + d.msg);
+                    alert(" " + d.msg);
                     document.getElementById('newJefeNombre').value = '';
                     document.getElementById('newJefeUser').value = '';
+                    document.getElementById('newJefeCodigo').value = '';
                     document.getElementById('newJefePass').value = '';
                     document.getElementById('newJefeSucursal').value = '';
                     cargarGlobal();
                 } else {
-                    alert("❌ Falló: " + (d.msg || "Error desconocido al crear."));
+                    alert("Falló: " + (d.msg || "Error desconocido al crear."));
                 }
             } catch (error) {
-                alert("❌ Error de comunicación con el servidor.");
+                alert("Error de comunicación con el servidor.");
                 console.error("Error en crearJefe:", error);
             }
         }
@@ -628,7 +641,7 @@
             document.getElementById('dateStart').value = ""; 
             document.getElementById('dateEnd').value = ""; 
             document.getElementById('listaTicketsBranch').innerHTML = `
-                <tr><td colspan="6" class="p-12 text-center text-gray-500 italic">Filtre para ver datos.</td></tr>
+                <tr><td colspan="8" class="p-12 text-center text-gray-500 italic">Filtre para ver datos.</td></tr>
             `; 
         }
 
@@ -640,10 +653,11 @@
             const e = document.getElementById('dateEnd').value;
             const tb = document.getElementById('listaTicketsBranch'); 
             
-            tb.innerHTML = `<tr><td colspan="6" class="p-12 text-center text-gray-500 animate-pulse">Buscando...</td></tr>`; 
+            tb.innerHTML = `<tr><td colspan="8" class="p-12 text-center text-gray-500 animate-pulse">Buscando...</td></tr>`; 
             
             try { 
-                const r = await fetch(`/api/admin/sucursal/${currentSucursalId}?busqueda=${q}&fechaInicio=${s}&fechaFin=${e}`); 
+                const r = await fetch(`/api/admin/sucursal/${currentSucursalId}?busqueda=${q}&fechaInicio=${s}&fechaFin=${e}`);
+                if (r.status === 401) { logout(); return; }
                 const d = await r.json(); 
                 
                 document.getElementById('brTotal').textContent = d.stats.total; 
@@ -651,32 +665,35 @@
                 document.getElementById('brJefatura').textContent = d.stats.atendidosJefatura; 
                 
                 if (!d.registros.length) {
-                    tb.innerHTML = `<tr><td colspan="6" class="p-12 text-center text-gray-500 italic">Sin resultados.</td></tr>`;
+                    tb.innerHTML = `<tr><td colspan="8" class="p-12 text-center text-gray-500 italic">Sin resultados.</td></tr>`;
                 } else {
                     tb.innerHTML = d.registros.map(t => `
                         <tr class="hover:bg-gray-700/30 border-b border-gray-700 last:border-0 transition-colors">
                             <td class="p-4">
-                                <span class="font-bold text-xl text-white">${t.codigo}</span>
-                                <div class="text-[10px] text-gray-500">${t.tipoTramite}</div>
+                                <span class="font-bold text-xl text-white">${escapeHtml(t.codigo)}</span>
+                                <div class="text-[10px] text-gray-500">${escapeHtml(t.tipoTramite)}</div>
                             </td>
                             <td class="p-4 text-xs text-gray-400 font-mono">
                                 ${new Date(t.creadoEn).toLocaleString()}
                             </td>
                             <td class="p-4 text-sm text-blue-300">
-                                ${t.documentoCliente || 'N/A'}
+                                ${escapeHtml(t.documentoCliente) || 'N/A'}
                             </td>
                             <td class="p-4 text-xs text-gray-300">
-                                ${t.ventanillaAtendio?.nombre || 'Pendiente'}
+                                ${escapeHtml(t.ventanillaAtendio?.nombre) || 'Pendiente'}
+                            </td>
+                            <td class="p-4 text-xs text-gray-400 font-mono">
+                                ${escapeHtml(t.ventanillaAtendio?.codigoEmpleado) || '--'}
                             </td>
                             <td class="p-4 text-sm break-words">
-                                ${t.notasAtencion || '--'}
+                                ${escapeHtml(t.notasAtencion) || '--'}
                             </td>
                             <td class="p-4 text-center font-mono text-yellow-400 text-sm">
                                 ${formatearTiempo(t.tiempoTotalAtencion)}
                             </td>
                             <td class="p-4 text-right">
                                 <span class="px-2 py-1 rounded text-[10px] font-bold ${t.estado === 'finalizado' ? 'text-green-400 bg-green-900/20' : 'text-yellow-400 bg-yellow-900/20'}">
-                                    ${t.estado}
+                                    ${escapeHtml(t.estado)}
                                 </span>
                             </td>
                         </tr>
@@ -702,15 +719,15 @@
             
             try {
                 const r = await fetch('/api/usuarios/admin-reset-password', {
-                    method: 'POST',
+                    method: 'PUT',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ targetUserId: id, nuevaPassword: p })
                 });
                 
                 if (r.ok) {
-                    alert("✅ Clave actualizada correctamente.");
+                    alert(" Clave actualizada correctamente.");
                 } else {
-                    alert("❌ Error al actualizar clave.");
+                    alert("Error al actualizar clave.");
                 }
             } catch(e) {
                 console.error(e);
@@ -720,11 +737,8 @@
         async function eliminar(id) { 
             if (confirm("¿Estás seguro de que deseas eliminar este usuario?")) {
                 try {
-                    await fetch('/api/admin/eliminar-usuario', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ id })
-                    });
+                    const r = await fetch(`/api/admin/eliminar-usuario/${id}`, { method: 'DELETE' });
+                    if (r.status === 401) { logout(); return; }
                     cargarGlobal();
                 } catch(e) {
                     console.error(e);
@@ -750,12 +764,12 @@
                 const d = await r.json();
                 
                 if (d.success) {
-                    alert("✅ Contraseña cambiada correctamente.");
+                    alert(" Contraseña cambiada correctamente.");
                     document.getElementById('modalMiClave').classList.add('hidden');
                     document.getElementById('myOldPass').value = '';
                     document.getElementById('myNewPass').value = '';
                 } else {
-                    alert("❌ " + d.msg);
+                    alert(d.msg);
                 }
             } catch(e) {
                 console.error(e);

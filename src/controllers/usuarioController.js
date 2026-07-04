@@ -7,7 +7,13 @@ const jwt = require('jsonwebtoken');
 exports.login = async (req, res) => {
     const { username, password, sucursalId } = req.body;
     try {
-        const user = await Usuario.findOne({ username, sucursal: sucursalId });
+        let filtro = { username };
+        if (sucursalId) {
+            filtro.sucursal = sucursalId;
+        } else {
+            filtro.sucursal = null;
+        }
+        const user = await Usuario.findOne(filtro);
         
         if(!user) return res.status(404).json({ success: false, msg: 'Usuario no existe o no pertenece a esta sucursal' });
         
@@ -23,10 +29,13 @@ exports.login = async (req, res) => {
             sucursal: user.sucursal
         };
 
-        // 2. Firmar el Token (Expiración de 8 horas para una jornada laboral estándar)
+        if (!process.env.JWT_SECRET) {
+            console.error('JWT_SECRET no está definido en .env');
+            return res.status(500).json({ msg: 'Error de configuración del servidor.' });
+        }
         const token = jwt.sign(
-            payload, 
-            process.env.JWT_SECRET || 'anda_super_secret_key_2026', 
+            { id: user._id, username: user.username, rol: user.rol, sucursal: user.sucursal, nombre: user.nombre },
+            process.env.JWT_SECRET, 
             { expiresIn: '8h' }
         );
 
@@ -57,12 +66,17 @@ exports.logout = (req, res) => {
 // CREAR USUARIO
 exports.crearUsuario = async (req, res) => {
     try {
-        const { nombre, username, password, sucursalId, skills, numeroVentanilla, rol } = req.body;
+        const { nombre, username, password, sucursalId, skills, numeroVentanilla, rol, codigoEmpleado } = req.body;
         
+        if (!/^\d{5}$/.test(codigoEmpleado)) {
+            return res.status(400).json({ success: false, msg: 'El codigo de empleado debe ser numerico de 5 digitos (00001-99999)' });
+        }
+
         const existe = await Usuario.findOne({ username }); 
         if(existe) return res.status(400).json({ success: false, msg: 'El usuario ya existe' });
 
         const nuevoUsuario = new Usuario({
+            codigoEmpleado,
             nombre,
             username,
             password: password || '123', 
@@ -144,7 +158,11 @@ exports.adminResetPassword = async (req, res) => {
 // 4. ACTUALIZAR USUARIO
 exports.actualizarUsuario = async (req, res) => {
     try {
-        const { id, nombre, username, skills, numeroVentanilla } = req.body;
+        const { id, nombre, username, skills, numeroVentanilla, codigoEmpleado } = req.body;
+        
+        if (codigoEmpleado && !/^\d{5}$/.test(codigoEmpleado)) {
+            return res.status(400).json({ success: false, msg: 'El codigo de empleado debe ser numerico de 5 digitos (00001-99999)' });
+        }
         
         if (username) {
             const existe = await Usuario.findOne({ username, _id: { $ne: id } });
@@ -152,6 +170,7 @@ exports.actualizarUsuario = async (req, res) => {
         }
         
         await Usuario.findByIdAndUpdate(id, { 
+            codigoEmpleado,
             nombre,
             username,
             skills,

@@ -1,9 +1,16 @@
 const express = require('express');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const ticketController = require('../controllers/ticketController');
 const { verificarToken, verificarRol } = require('../middleware/auth');
 
-router.post('/crear', ticketController.crearTicket);
+const crearTicketLimiter = rateLimit({
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW) || 60 * 1000,
+    max: parseInt(process.env.RATE_LIMIT_MAX) || 10,
+    message: { success: false, msg: 'Demasiadas solicitudes. Espere un momento antes de crear otro ticket.' }
+});
+
+router.post('/crear', crearTicketLimiter, ticketController.crearTicket);
 router.get('/cola/:sucursalId', ticketController.obtenerCola);
 
 const rolesOperacion = ['ventanilla', 'ejecutivo', 'jefe_sucursal', 'super_admin'];
