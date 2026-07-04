@@ -123,9 +123,18 @@ exports.listarPorSucursal = async (req, res) => {
 
 exports.cambiarPasswordPropio = async (req, res) => {
     try {
-        const { usuarioId, actual, nueva } = req.body;
-        const usuario = await Usuario.findById(usuarioId);
-        
+        const { actual, nueva } = req.body;
+
+        if (!actual || !nueva) {
+            return res.status(400).json({ success: false, msg: 'Debe proporcionar la contraseña actual y la nueva' });
+        }
+
+        const usuario = await Usuario.findById(req.usuario.id);
+
+        if (!usuario) {
+            return res.status(404).json({ success: false, msg: 'Usuario no encontrado' });
+        }
+
         const isMatch = await usuario.compararPassword(actual);
         if(!isMatch) {
             return res.status(400).json({ success: false, msg: 'La contraseña actual es incorrecta' });
@@ -135,7 +144,10 @@ exports.cambiarPasswordPropio = async (req, res) => {
         await usuario.save();
         
         res.json({ success: true });
-    } catch (e) { res.status(500).send('Error'); }
+    } catch (e) {
+        console.error(e);
+        res.status(500).json({ success: false, msg: 'Error al cambiar la contraseña' });
+    }
 };
 
 exports.adminResetPassword = async (req, res) => {

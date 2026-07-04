@@ -353,7 +353,7 @@
                         <h4 class="font-bold text-white text-sm mb-2 pr-16">${g.titulo}</h4>
                         <p class="text-xs text-gray-400 line-clamp-3 flex-grow">${g.contenido}</p>
                         <div class="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <button onclick="prepararEdicion('${g._id}', '${escapeHtml(g.titulo)}', '${escapeHtml(g.contenido)}')" class="bg-blue-600 hover:bg-blue-500 text-white rounded p-1.5" title="Editar">✏️</button>
+                            <button onclick="prepararEdicion('${g._id}', '${escaparJS(g.titulo)}', '${escaparJS(g.contenido)}')" class="bg-blue-600 hover:bg-blue-500 text-white rounded p-1.5" title="Editar">✏️</button>
                             <button onclick="borrarGuia('${g._id}')" class="bg-red-600 hover:bg-red-500 text-white rounded p-1.5" title="Eliminar">🗑️</button>
                         </div>
                     </div>
@@ -394,6 +394,7 @@
 
         async function borrarGuia(id) { if(confirm('¿Borrar esta guía permanentemente?')) { await fetch(`/api/guias/${id}`, { method: 'DELETE' }); cargarGuiasAdmin(); } }
         function escapeHtml(text) { if (!text) return ""; return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;"); }
+        function escaparJS(text) { if (!text) return ""; return String(text).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n').replace(/\r/g, '\\r'); }
 
         function abrirModalCrearSucursal() { document.getElementById('modalNewSucursal').classList.remove('hidden'); }
         async function guardarNuevaSucursal() {
@@ -754,12 +755,17 @@
         async function guardarMiClave() { 
             const o = document.getElementById('myOldPass').value;
             const n = document.getElementById('myNewPass').value; 
-            
+
+            if (!o || !n) {
+                alert("Debe completar ambos campos (actual y nueva)");
+                return;
+            }
+
             try {
                 const r = await fetch('/api/usuarios/cambiar-password', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ usuarioId: currentUserData._id, actual: o, nueva: n })
+                    body: JSON.stringify({ actual: o, nueva: n })
                 });
                 
                 const d = await r.json();
