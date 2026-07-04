@@ -35,9 +35,8 @@ Antes de comenzar, asegurese de contar con lo siguiente:
 4 - Clonar el repositorio e instalar dependencias del proyecto
 5 - Configurar variables de entorno
 6 - Crear el usuario Super Admin
-7 - Poblacion de datos de prueba (opcional)
-8 - Configurar PM2 para ejecucion en produccion
-9 - Integracion con Google Sheets
+7 - Configurar PM2 para ejecucion en produccion
+8 - Integracion con Google Sheets
 
 # 1 - Actualizar el Servidor
 Conectese al servidor via SSH y ejecute:
@@ -76,7 +75,7 @@ npm install
 
 # 5 - Configurar Variables de Entorno
 
-El proyecto incluye un archivo `.env.example` como plantilla. **Nunca suba el archivo `.env` al repositorio** (ya está incluido en `.gitignore`).
+El proyecto incluye un archivo `.env.example` como plantilla. Pero necesitara un .env con las variables necesarias para que el sistema funcione correctamente, para ello puede clonar el .ev.example de la siguiente manera:
 
 ```bash
 cp .env.example .env
@@ -85,7 +84,7 @@ nano .env
 
 ## Generar JWT_SECRET seguro
 
-El secreto JWT **no debe estar hardcodeado** ni ser predecible. Genere uno seguro con:
+Dentro de las variables del .env, es necesario un secreto JWT, por seguridad no se recomienda dejarlo quemado, ni que sea predecible. Por ello, se recomienda generar uno seguro con:
 
 ```bash
 openssl rand -base64 64
@@ -94,27 +93,7 @@ openssl rand -base64 64
 Copie el resultado y péguelo como valor de `JWT_SECRET` en su `.env`:
 
 ```env
-JWT_SECRET=pegue_aqui_el_resultado_de_openssl
-```
-
-En producción se recomienda inyectar `JWT_SECRET` como **variable de entorno del sistema operativo** en lugar de usar el archivo `.env`. Esto evita que el secreto quede expuesto en el sistema de archivos:
-
-```bash
-export JWT_SECRET=$(openssl rand -base64 64)
-```
-
-Si usa PM2, puede configurarlo en el `ecosystem.config.js`:
-
-```javascript
-module.exports = {
-  apps: [{
-    name: 'anda-turnos',
-    script: 'server.js',
-    env: {
-      JWT_SECRET: process.env.JWT_SECRET
-    }
-  }]
-};
+JWT_SECRET=pegar_el_resultado_de_openssl
 ```
 
 ## Variables disponibles
@@ -162,18 +141,7 @@ Esto creará un usuario administrador por defecto, asegurese de cambiar la clave
 Usuario: superanda
 Clave: 123
 
-# 7 - Poblar la Base de Datos con Datos de Prueba (Opcional)
-Si desea poblar la base de datos con sucursales, usuarios, tickets y guias de ejemplo, ejecute:
-
-```bash
-node seed.js
-```
-
-Esto crea 3 sucursales, 11 usuarios (1 super admin, 3 jefes, 7 ejecutivos de ventanilla), 15 tickets y 4 guias.
-Cada usuario se crea con un `codigoEmpleado` unico de 5 digitos (ej. 00001, 00002, ... 00011).
-Todos los usuarios de prueba tienen clave `123`.
-
-# 8 - Ejecutar en Producción con PM2
+# 7 - Ejecutar en Producción con PM2
 Se recomienda usar PM2 para mantener la aplicación corriendo en segundo plano, esto se ejecuta en la raiz del proyecto:
 
 ```bash
@@ -191,7 +159,7 @@ bash test_api.sh
 
 Todas las pruebas deben pasar (48 tests, 0 fallos).
 
-# 9 - Integración con Google Sheets
+# 8 - Integración con Google Sheets
 El sistema permite exportar automáticamente los tickets finalizados a una hoja de cálculo de Google Sheets.
 
 ## 1. Preparar la Hoja de Cálculo
