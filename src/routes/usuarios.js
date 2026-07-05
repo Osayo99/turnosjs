@@ -8,11 +8,7 @@ const { verificarToken, verificarRol } = require('../middleware/auth');
 const loginLimiter = rateLimit({
     windowMs: 60 * 1000,
     max: 5,
-    keyGenerator: (req) => {
-        const username = req.body?.username || 'anon';
-        const clientIp = req.ip;
-        return `login_${username}_${clientIp}`;
-    },
+    keyGenerator: (req) => `login_${req.body?.username || 'anon'}`,
     message: { success: false, msg: 'Demasiados intentos. Espere un minuto antes de intentar de nuevo.' }
 });
 

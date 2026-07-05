@@ -9,6 +9,7 @@ const crearSuperAdmin = async () => {
         await mongoose.connect(MONGO_URI);
         console.log('Conectado a MongoDB');
         const adminData = {
+            codigoEmpleado: "00000",
             nombre: "Administrador Principal",
             username: process.env.ADMIN_USERNAME || "superanda",      
             password: process.env.ADMIN_PASSWORD || "123",        
