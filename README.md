@@ -189,6 +189,7 @@ En la lista de sucursales, haga clic en el icono de grafico.
 
 Pegue la URL de Google Apps Script en el campo de Webhook.
 Seleccione la frecuencia de exportación (ej. cada 5 minutos o cada hora).
+
 <img width="552" height="395" alt="image" src="https://github.com/user-attachments/assets/abbd60d4-1220-4179-8ecf-81db49ee25e5" />
 
 Guarde la configuración.
