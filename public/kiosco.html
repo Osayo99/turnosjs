@@ -58,7 +58,6 @@
                     <option value="DUI">💧 DUI</option>
                     <option value="NIT">📄 NIT</option>
                     <option value="PASAPORTE">✈️ Pasaporte</option>
-                    <option value="OTRO">👤 Otro</option>
                 </select>
             </div>
             <div class="w-full md:w-2/3 relative">
@@ -220,7 +219,7 @@
                     imprimirTicket(data.ticket);
                     inputDoc.value = '';
                     setPrioridad('normal');
-                } else {
+            } else if (tipo === 'PASAPORTE') {
                     alert('Error: ' + data.msg);
                 }
 

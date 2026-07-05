@@ -17,12 +17,20 @@
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^9.1.2",
-    "multer": "^2.0.2",
+    "mongoose": "^9.6.0",
+    "multer": "^2.2.0",
     "node-cron": "^4.2.1",
     "socket.io": "^4.8.3"
   },
+  "overrides": {
+    "engine.io": "~6.6.9",
+    "socket.io-parser": "~4.2.6",
+    "path-to-regexp": "~8.4.0",
+    "qs": "~6.15.2",
+    "picomatch": "~2.3.2",
+    "ws": "~8.21.0"
+  },
   "devDependencies": {
-    "nodemon": "^3.1.11"
+    "nodemon": "^3.1.14"
   }
 }
