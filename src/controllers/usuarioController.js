@@ -80,7 +80,7 @@ exports.crearUsuario = async (req, res) => {
             codigoEmpleado,
             nombre,
             username,
-            password: password || '123', 
+            password,
             sucursal: sucursalId,
             skills: skills || [],
             numeroVentanilla: numeroVentanilla || 0,

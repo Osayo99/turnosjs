@@ -6,8 +6,8 @@ const ticketController = require('../controllers/ticketController');
 const { verificarToken, verificarRol } = require('../middleware/auth');
 
 const crearTicketLimiter = rateLimit({
-    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW) || 60 * 1000,
-    max: parseInt(process.env.RATE_LIMIT_MAX) || 10,
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW),
+    max: parseInt(process.env.RATE_LIMIT_MAX),
     message: { success: false, msg: 'Demasiadas solicitudes. Espere un momento antes de crear otro ticket.' }
 });
 

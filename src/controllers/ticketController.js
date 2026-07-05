@@ -336,8 +336,8 @@ exports.buscarHistorial = async (req, res) => {
             ];
         }
 
-        const page = parseInt(pagina) || 1;
-        const limit = parseInt(limite) || 10;
+        const page = parseInt(pagina);
+        const limit = parseInt(limite);
         const skip = (page - 1) * limit;
 
         const [registros, total] = await Promise.all([

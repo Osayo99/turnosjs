@@ -2,7 +2,7 @@
 require('dotenv').config({ quiet: true });
 const mongoose = require('mongoose');
 const Usuario = require('./src/models/Usuario');
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/anda_turnos';
+const MONGO_URI = process.env.MONGO_URI;
 
 const crearSuperAdmin = async () => {
     try {
@@ -11,8 +11,8 @@ const crearSuperAdmin = async () => {
         const adminData = {
             codigoEmpleado: "00000",
             nombre: "Administrador Principal",
-            username: process.env.ADMIN_USERNAME || "superanda",      
-            password: process.env.ADMIN_PASSWORD || "123",        
+            username: process.env.ADMIN_USERNAME,      
+            password: process.env.ADMIN_PASSWORD,        
             rol: "super_admin",
             sucursal: null 
         };

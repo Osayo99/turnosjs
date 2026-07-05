@@ -26,7 +26,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: process.env.CORS_ORIGIN || '*',
+        origin: process.env.CORS_ORIGIN,
         methods: ["GET", "POST"]
     }
 });
@@ -53,13 +53,13 @@ io.on('connection', (socket) => {
 connectDB(); 
 
 app.use(cors());
-app.use(express.json({ limit: process.env.MAX_BODY_SIZE || '5mb' }));
+app.use(express.json({ limit: process.env.MAX_BODY_SIZE }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
-        const dir = process.env.UPLOAD_DIR || './public/uploads';
+        const dir = process.env.UPLOAD_DIR;
         if (!fs.existsSync(dir)){
             fs.mkdirSync(dir, { recursive: true });
         }
@@ -73,7 +73,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({ 
     storage: storage,
-    limits: { fileSize: parseInt(process.env.MAX_UPLOAD_SIZE) || 50 * 1024 * 1024 },
+    limits: { fileSize: parseInt(process.env.MAX_UPLOAD_SIZE) },
     fileFilter: (req, file, cb) => {
         if (file.mimetype === 'video/mp4') {
             cb(null, true);
@@ -123,7 +123,7 @@ app.use((err, req, res, next) => {
     });
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT;
 server.listen(PORT, () => {
     console.log(`\n=================================================`);
     console.log(`Servidor ANDA corriendo en http://localhost:${PORT}`);

@@ -3,12 +3,12 @@ const mongoose = require('mongoose');
 const Sucursal = require('../models/Sucursal'); 
 const { initCronJobs } = require('../services/cronService');
 
-const MAX_RETRIES = parseInt(process.env.DB_MAX_RETRIES) || 3;
-const RETRY_DELAY = parseInt(process.env.DB_RETRY_DELAY) || 3000;
+const MAX_RETRIES = parseInt(process.env.DB_MAX_RETRIES);
+const RETRY_DELAY = parseInt(process.env.DB_RETRY_DELAY);
 
 const connectDB = async (retryCount = 0) => {
     try {
-        const uri = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/anda_turnos';
+        const uri = process.env.MONGO_URI;
         await mongoose.connect(uri);
         console.log('MongoDB Conectado Exitosamente');
         initCronJobs();
