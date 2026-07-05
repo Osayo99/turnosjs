@@ -129,6 +129,8 @@ ADMIN_PASSWORD=cambiar_por_clave_segura
 # production:  cookies secure, sin stack traces
 NODE_ENV=production
 ```
+Asegurese de colocar la clave y nombre de usuario que colocara en el usuario super administrador, aunque se podran cambiar desde la consola.
+El token JWT podria ser una variable de entorno llamada desde PM2, en este caso, es estatica en el .env
 
 # 6 - Crear el usuario Super Admin
 Ejecute el script de creación del Super Administrador inicial desde la raiz del proyecto:
@@ -139,7 +141,7 @@ node crearAdmin.js
 Esto creará un usuario administrador por defecto, asegurese de cambiar la clave una vez ingrese al sistema, y elimine o mueve al archivo crearAdmin.js a un lugar seguro fuera del proyecto:
 
 Usuario: superanda
-Clave: 123
+Clave: cambiar_por_clave_segura
 
 # 7 - Ejecutar en Producción con PM2
 Se recomienda usar PM2 para mantener la aplicación corriendo en segundo plano, esto se ejecuta en la raiz del proyecto:
