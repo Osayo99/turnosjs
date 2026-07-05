@@ -46,8 +46,8 @@ exports.login = async (req, res) => {
 
         res.cookie('anda_token', token, {
             httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: 'strict',
+            secure: req.secure || req.get('x-forwarded-proto') === 'https',
+            sameSite: 'lax',
             maxAge: 8 * 60 * 60 * 1000
         });
 
